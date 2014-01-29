@@ -1,8 +1,8 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 2002-3	      The R Foundation
- *  Copyright (C) 1999-2007   The R Core Team.
+ *  Copyright (C) 2002-3     The R Foundation
+ *  Copyright (C) 1999-2013  The R Core Team.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,8 @@
 #endif
 
 #define R_USE_SIGNALS 1
-#include "Defn.h"
+#include <Defn.h>
+#include <Internal.h>
 #include <R_ext/RS.h> /* for Calloc, Realloc and for S4 object bit */
 
 static SEXP GetObject(RCNTXT *cptr)
@@ -47,26 +48,26 @@ static SEXP GetObject(RCNTXT *cptr)
 
     tag = TAG(formals);
     if (tag != R_NilValue && tag != R_DotsSymbol) {
-	s = R_NilValue;
+	s = NULL;
 	/** exact matches **/
 	for (b = cptr->promargs ; b != R_NilValue ; b = CDR(b))
 	    if (TAG(b) != R_NilValue && pmatch(tag, TAG(b), 1)) {
-		if (s != R_NilValue)
+		if (s != NULL)
 		    error(_("formal argument \"%s\" matched by multiple actual arguments"), tag);
 		else
 		    s = CAR(b);
 	    }
 
-	if (s == R_NilValue)
+	if (s == NULL)
 	    /** partial matches **/
 	    for (b = cptr->promargs ; b != R_NilValue ; b = CDR(b))
 		if (TAG(b) != R_NilValue && pmatch(tag, TAG(b), 0)) {
-		    if ( s != R_NilValue)
+		    if ( s != NULL)
 			error(_("formal argument \"%s\" matched by multiple actual arguments"), tag);
 		    else
 			s = CAR(b);
 		}
-	if (s == R_NilValue)
+	if (s == NULL)
 	    /** first untagged argument **/
 	    for (b = cptr->promargs ; b != R_NilValue ; b = CDR(b))
 		if (TAG(b) == R_NilValue )
@@ -74,7 +75,7 @@ static SEXP GetObject(RCNTXT *cptr)
 		    s = CAR(b);
 		    break;
 		}
-	if (s == R_NilValue)
+	if (s == NULL)
 	    s = CAR(cptr->promargs);
 /*
 	    error("failed to match argument for dispatch");
@@ -156,6 +157,10 @@ static SEXP matchmethargs(SEXP oldargs, SEXP newargs)
     return listAppend(oldargs, newargs);
 }
 
+/* R_MethodsNamespace is initialized to R_GlobalEnv when R is
+   initialized.  If it set to the methods namespace when the latter is
+   loaded, and back to R_GlobalEnv when it is unloaded. */
+
 #ifdef S3_for_S4_warn /* not currently used */
 static SEXP s_check_S3_for_S4 = 0;
 void R_warn_S3_for_S4(SEXP method) {
@@ -183,6 +188,7 @@ void R_warn_S3_for_S4(SEXP method) {
  *    3. fix up the argument list; it should be the arguments to the
  *	 generic matched to the formals of the method to be invoked */
 
+attribute_hidden
 SEXP R_LookupMethod(SEXP method, SEXP rho, SEXP callrho, SEXP defrho)
 {
     SEXP val;
@@ -237,7 +243,7 @@ int isBasicClass(const char *ss) {
     if(!s_S3table) {
       s_S3table = findVarInFrame3(R_MethodsNamespace, install(".S3MethodsClasses"), TRUE);
       if(s_S3table == R_UnboundValue)
-	error(_("No .S3MethodsClass table, can't use S4 objects with S3 methods (methods package not attached?)"));
+	error(_("no '.S3MethodsClass' table, cannot use S4 objects with S3 methods ('methods' package not attached?)"));
 	if (TYPEOF(s_S3table) == PROMSXP)  /* findVar... ignores lazy data */
 	    s_S3table = eval(s_S3table, R_MethodsNamespace);
     }
@@ -247,7 +253,7 @@ int isBasicClass(const char *ss) {
 }
 
 
-
+attribute_hidden
 int usemethod(const char *generic, SEXP obj, SEXP call, SEXP args,
 	      SEXP rho, SEXP callrho, SEXP defrho, SEXP *ans)
 {
@@ -281,7 +287,7 @@ int usemethod(const char *generic, SEXP obj, SEXP call, SEXP args,
 	PROTECT(op);
 	break;
     default:
-	error(_("Invalid generic function in 'usemethod'"));
+	error(_("invalid generic function in 'usemethod'"));
     }
 
     nprotect = 5;
@@ -306,11 +312,13 @@ int usemethod(const char *generic, SEXP obj, SEXP call, SEXP args,
 
     nclass = length(klass);
     for (i = 0; i < nclass; i++) {
+	const void *vmax = vmaxget();
         const char *ss = translateChar(STRING_ELT(klass, i));
 	if(strlen(generic) + strlen(ss) + 2 > 512)
 	    error(_("class name too long in '%s'"), generic);
-	sprintf(buf, "%s.%s", generic, ss);
+	snprintf(buf, 512, "%s.%s", generic, ss);
 	method = install(buf);
+	vmaxset(vmax);
 	sxp = R_LookupMethod(method, rho, callrho, defrho);
 	if (isFunction(sxp)) {
 	    if(method == sort_list && CLOENV(sxp) == R_BaseNamespace)
@@ -344,7 +352,7 @@ int usemethod(const char *generic, SEXP obj, SEXP call, SEXP args,
     }
     if(strlen(generic) + strlen("default") + 2 > 512)
 	error(_("class name too long in '%s'"), generic);
-    sprintf(buf, "%s.default", generic);
+    snprintf(buf, 512, "%s.default", generic);
     method = install(buf);
     sxp = R_LookupMethod(method, rho, callrho, defrho);
     if (isFunction(sxp)) {
@@ -414,7 +422,7 @@ SEXP attribute_hidden do_usemethod(SEXP call, SEXP op, SEXP args, SEXP env)
 	The generic need not be a closure (Henrik Bengtsson writes
 	UseMethod("$"), although only functions are documented.)
     */
-    val = findVar1(install(translateChar(STRING_ELT(generic, 0))),
+    val = findVar1(installTrChar(STRING_ELT(generic, 0)),
 		   ENCLOS(env), FUNSXP, TRUE); /* That has evaluated promises */
     if(TYPEOF(val) == CLOSXP) defenv = CLOENV(val);
     else defenv = R_BaseNamespace;
@@ -429,7 +437,7 @@ SEXP attribute_hidden do_usemethod(SEXP call, SEXP op, SEXP args, SEXP env)
 	    cptr = cptr->nextcontext;
 	}
 	if (cptr == NULL)
-	    errorcall(call, _("'UseMethod' called from outside a closure"));
+	    errorcall(call, _("'UseMethod' called from outside a function"));
 	PROTECT(obj = GetObject(cptr));
     }
 
@@ -574,7 +582,7 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
 	    if(TYPEOF(CAR(s)) == DOTSXP) {
 		for(i = 1, a = CAR(s); a != R_NilValue;
 		    a = CDR(a), i++, m = CDR(m)) {
-		    sprintf(tbuf, "..%d", i);
+		    snprintf(tbuf, 10, "..%d", i);
 		    SET_TAG(m, mkSYMSXP(mkChar(tbuf), R_UnboundValue));
 		    SETCAR(m, CAR(a));
 		}
@@ -656,7 +664,7 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
     PROTECT(generic);
 
     if (!isString(generic) || length(generic) != 1)
-	error(_("invalid generic argument to NextMethod"));
+	error(_("invalid generic argument to 'NextMethod'"));
 
     if (CHAR(STRING_ELT(generic, 0))[0] == '\0')
 	error(_("generic function not specified"));
@@ -669,7 +677,7 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
     else PROTECT(group);
 
     if (!isString(group) || length(group) != 1)
-	error(_("invalid 'group' argument found in NextMethod"));
+	error(_("invalid 'group' argument found in 'NextMethod'"));
 
     /* determine the root: either the group or the generic will be it */
 
@@ -693,25 +701,25 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
 	    ss = translateChar(STRING_ELT(method, i));
 	    if(strlen(ss) >= 512)
 		error(_("method name too long in '%s'"), ss);
-	    sprintf(b, "%s", ss);
+	    snprintf(b, 512, "%s", ss);
 	    if(strlen(b)) break;
 	}
 	/* for binary operators check that the second argument's method
 	   is the same or absent */
-	for(j = i; j < length(method); j++){
+	for(j = i; j < length(method); j++) {
 	    const char *ss = translateChar(STRING_ELT(method, j));
 	    if(strlen(ss) >= 512)
 		error(_("method name too long in '%s'"), ss);
-	  sprintf(bb, "%s", ss);
-	  if (strlen(bb) && strcmp(b,bb))
-	      warning(_("Incompatible methods ignored"));
+	    snprintf(bb, 512, "%s", ss);
+	    if (strlen(bb) && strcmp(b,bb))
+		warning(_("Incompatible methods ignored"));
 	}
     }
     else {
 	if(strlen(CHAR(PRINTNAME(CAR(cptr->call)))) >= 512)
 	   error(_("call name too long in '%s'"),
 		 CHAR(PRINTNAME(CAR(cptr->call))));
-	sprintf(b, "%s", CHAR(PRINTNAME(CAR(cptr->call))));
+	snprintf(b, 512, "%s", CHAR(PRINTNAME(CAR(cptr->call))));
     }
 
     sb = translateChar(STRING_ELT(basename, 0));
@@ -719,7 +727,7 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
 	sk = translateChar(STRING_ELT(klass, j));
 	if(strlen(sb) + strlen(sk) + 2 > 512)
 	    error(_("class name too long in '%s'"), sb);
-	sprintf(buf, "%s.%s", sb, sk);
+	snprintf(buf, 512, "%s.%s", sb, sk);
 	if (!strcmp(buf, b)) break;
     }
 
@@ -736,14 +744,14 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
 	sk = translateChar(STRING_ELT(klass, i));
 	if(strlen(sg) + strlen(sk) + 2 > 512)
 	    error(_("class name too long in '%s'"), sg);
-	sprintf(buf, "%s.%s", sg, sk);
+	snprintf(buf, 512, "%s.%s", sg, sk);
 	nextfun = R_LookupMethod(install(buf), env, callenv, defenv);
 	if (isFunction(nextfun)) break;
 	if (group != R_UnboundValue) {
 	    /* if not Generic.foo, look for Group.foo */
 	    if(strlen(sb) + strlen(sk) + 2 > 512)
 		error(_("class name too long in '%s'"), sb);
-	    sprintf(buf, "%s.%s", sb, sk);
+	    snprintf(buf, 512, "%s.%s", sb, sk);
 	    nextfun = R_LookupMethod(install(buf), env, callenv, defenv);
 	    if(isFunction(nextfun))
 		break;
@@ -752,7 +760,7 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
 	    break;
     }
     if (!isFunction(nextfun)) {
-	sprintf(buf, "%s.default", sg);
+	snprintf(buf, 512, "%s.default", sg);
 	nextfun = R_LookupMethod(install(buf), env, callenv, defenv);
 	/* If there is no default method, try the generic itself,
 	   provided it is primitive or a wrapper for a .Internal
@@ -802,6 +810,12 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
     defineVar(R_dot_Group, group, m);
 
     SETCAR(newcall, method);
+
+    /* applyMethod expects that the parent of the caller is the caller
+       of the generic, so fixup by brute force. This should fix
+       PR#15267 --pd */
+    R_GlobalContext->sysparent = callenv;
+
     ans = applyMethod(newcall, nextfun, matchedarg, env, m);
     UNPROTECT(10);
     return(ans);
@@ -843,9 +857,11 @@ SEXP attribute_hidden do_unclass(SEXP call, SEXP op, SEXP args, SEXP env)
  * @return if which is false, logical TRUE or FALSE
  *	   if which is true, integer vector of length(what) ..
  */
-SEXP inherits3(SEXP x, SEXP what, SEXP which)
+static SEXP inherits3(SEXP x, SEXP what, SEXP which)
 {
+    const void *vmax = vmaxget();
     SEXP klass, rval = R_NilValue /* -Wall */;
+
     if(IS_S4_OBJECT(x))
 	PROTECT(klass = R_data_class2(x));
     else
@@ -885,6 +901,7 @@ SEXP inherits3(SEXP x, SEXP what, SEXP which)
 	    }
 	}
     }
+    vmaxset(vmax);
     if(!isvec) {
     	UNPROTECT(1);
 	return mkFalse();
@@ -902,6 +919,14 @@ SEXP attribute_hidden do_inherits(SEXP call, SEXP op, SEXP args, SEXP env)
 		     /* which = */ CADDR(args));
 }
 
+
+/*
+   ==============================================================
+
+     code from here on down is support for the methods package
+
+   ==============================================================
+*/
 
 /**
  * Return the 0-based index of an is() match in a vector of class-name
@@ -979,9 +1004,9 @@ int R_check_class_etc(SEXP x, const char **valid)
     pkg = getAttrib(cl, R_PackageSymbol); /* ==R== packageSlot(class(x)) */
     if(!isNull(pkg)) { /* find  rho := correct class Environment */
 	SEXP clEnvCall;
-	// FIXME: fails if 'methods' is not attached.
+	// FIXME: fails if 'methods' is not loaded.
 	PROTECT(clEnvCall = lang2(meth_classEnv, cl));
-	rho = eval(clEnvCall, R_GlobalEnv);
+	rho = eval(clEnvCall, R_MethodsNamespace);
 	UNPROTECT(1);
 	if(!isEnvironment(rho))
 	    error(_("could not find correct environment; please report!"));
@@ -989,29 +1014,22 @@ int R_check_class_etc(SEXP x, const char **valid)
     return R_check_class_and_super(x, valid, rho);
 }
 
-/*
-   ==============================================================
-
-     code from here on down is support for the methods package
-
-   ==============================================================
-*/
-
 /* standardGeneric:  uses a pointer to R_standardGeneric, to be
-   initialized when the methods package is attached.  When and if the
-   methods code is automatically included, the pointer will not be
-   needed
-
+   initialized when the methods namespace is loaded,
+   via R_initMethodDispatch.
 */
 static R_stdGen_ptr_t R_standardGeneric_ptr = 0;
 static SEXP dispatchNonGeneric(SEXP name, SEXP env, SEXP fdef);
 #define NOT_METHODS_DISPATCH_PTR(ptr) (ptr == 0 || ptr == dispatchNonGeneric)
 
+static
 R_stdGen_ptr_t R_get_standardGeneric_ptr(void)
 {
     return R_standardGeneric_ptr;
 }
 
+/* Also called from R_initMethodDispatch in methods C code, which is
+   called when the methods namespace is loaded. */
 R_stdGen_ptr_t R_set_standardGeneric_ptr(R_stdGen_ptr_t val, SEXP envir)
 {
     R_stdGen_ptr_t old = R_standardGeneric_ptr;
@@ -1024,33 +1042,51 @@ R_stdGen_ptr_t R_set_standardGeneric_ptr(R_stdGen_ptr_t val, SEXP envir)
     return old;
 }
 
-SEXP R_isMethodsDispatchOn(SEXP onOff) {
-    SEXP value = allocVector(LGLSXP, 1);
-    Rboolean onOffValue;
+static SEXP R_isMethodsDispatchOn(SEXP onOff)
+{
     R_stdGen_ptr_t old = R_get_standardGeneric_ptr();
-    LOGICAL(value)[0] = !NOT_METHODS_DISPATCH_PTR(old);
+    int ival =  !NOT_METHODS_DISPATCH_PTR(old);
     if(length(onOff) > 0) {
-	    onOffValue = asLogical(onOff);
-	    if(onOffValue == FALSE)
-		    R_set_standardGeneric_ptr(0, 0);
-	    else if(NOT_METHODS_DISPATCH_PTR(old)) {
-		    SEXP call;
-		    PROTECT(call = allocList(2));
-		    SETCAR(call, install("initMethodsDispatch"));
-		    eval(call, R_GlobalEnv); /* only works with
-						methods	 attached */
-		    UNPROTECT(1);
-	    }
+	Rboolean onOffValue = asLogical(onOff);
+	if(onOffValue == NA_INTEGER)
+	    error(_("'onOff' must be TRUE or FALSE"));
+	else if(onOffValue == FALSE)
+	    R_set_standardGeneric_ptr(NULL, R_GlobalEnv);
+	// TRUE is not currently used
+	else if(NOT_METHODS_DISPATCH_PTR(old)) {
+	    // so not already on
+	    // This may not work correctly: the default arg is incorrect.
+	    warning("R_isMethodsDispatchOn(TRUE) called -- may not work correctly");
+	    // FIXME: use call = PROTECT(lang1(install("initMethodDispatch")));
+	    SEXP call = PROTECT(allocList(2));
+	    SETCAR(call, install("initMethodDispatch"));
+	    eval(call, R_MethodsNamespace); // only works with methods loaded
+	    UNPROTECT(1);
+	}
     }
-    return value;
+    return ScalarLogical(ival);
 }
 
-/* simpler version for internal use */
-
+/* simpler version for internal use, in attrib.c and print.c */
 attribute_hidden
 Rboolean isMethodsDispatchOn(void)
 {
     return !NOT_METHODS_DISPATCH_PTR(R_standardGeneric_ptr);
+}
+
+
+/* primitive for .isMethodsDispatchOn
+   This is generally called without an arg, but is call with
+   onOff=FALSE when package methods is detached/unloaded.
+
+   It seems it is not currently called with onOff = TRUE (and would
+   not have worked prior to 3.0.2).
+*/ 
+attribute_hidden
+SEXP do_S4on(SEXP call, SEXP op, SEXP args, SEXP env)
+{
+    if(length(args) == 0) return ScalarLogical(isMethodsDispatchOn());
+    return R_isMethodsDispatchOn(CAR(args));
 }
 
 
@@ -1060,8 +1096,9 @@ static SEXP dispatchNonGeneric(SEXP name, SEXP env, SEXP fdef)
        calls to standardGeneric during the loading of the methods package */
     SEXP e, value, rho, fun, symbol;
     RCNTXT *cptr;
+
     /* find a non-generic function */
-    symbol = install(translateChar(asChar(name)));
+    symbol = installTrChar(asChar(name));
     for(rho = ENCLOS(env); rho != R_EmptyEnv;
 	rho = ENCLOS(rho)) {
 	fun = findVarInFrame3(rho, symbol, TRUE);
@@ -1111,7 +1148,7 @@ SEXP attribute_hidden do_standardGeneric(SEXP call, SEXP op, SEXP args, SEXP env
 
     if(!ptr) {
 	warningcall(call,
-		    _("standardGeneric called without methods dispatch enabled (will be ignored)"));
+		    _("'standardGeneric' called without 'methods' dispatch enabled (will be ignored)"));
 	R_set_standardGeneric_ptr(dispatchNonGeneric, NULL);
 	ptr = R_get_standardGeneric_ptr();
     }
@@ -1120,7 +1157,7 @@ SEXP attribute_hidden do_standardGeneric(SEXP call, SEXP op, SEXP args, SEXP env
     arg = CAR(args);
     if(!isValidStringF(arg))
 	errorcall(call,
-		  _("argument to standardGeneric must be a non-empty character string"));
+		  _("argument to 'standardGeneric' must be a non-empty character string"));
 
     PROTECT(fdef = get_this_generic(args));
 
@@ -1147,6 +1184,7 @@ SEXP R_set_prim_method(SEXP fname, SEXP op, SEXP code_vec, SEXP fundef,
 		       SEXP mlist)
 {
     const char *code_string;
+    const void *vmax = vmaxget();
     if(!isValidString(code_vec))
 	error(_("argument 'code' must be a character string"));
     code_string = translateChar(asChar(code_vec));
@@ -1166,7 +1204,8 @@ SEXP R_set_prim_method(SEXP fname, SEXP op, SEXP code_vec, SEXP fundef,
 	return value;
     }
     do_set_prim_method(op, code_string, fundef, mlist);
-    return(fname);
+    vmaxset(vmax);
+    return fname;
 }
 
 SEXP R_primitive_methods(SEXP op)
@@ -1300,7 +1339,7 @@ static SEXP get_primitive_methods(SEXP op, SEXP rho)
     val = eval(e, rho);
     /* a rough sanity check that this looks like a generic function */
     if(TYPEOF(val) != CLOSXP || !IS_S4_OBJECT(val))
-	error(_("object returned as generic function \"%s\" doesn't appear to be one"), PRIMNAME(op));
+	error(_("object returned as generic function \"%s\" does not appear to be one"), PRIMNAME(op));
     UNPROTECT(nprotect);
     return CLOENV(val);
 }
@@ -1312,6 +1351,7 @@ argument to standardGeneric.
 */
 static SEXP get_this_generic(SEXP args)
 {
+    const void *vmax = vmaxget();
     SEXP value = R_NilValue; static SEXP gen_name;
     int i, n;
     RCNTXT *cptr;
@@ -1341,12 +1381,15 @@ static SEXP get_this_generic(SEXP args)
 	}
     }
     UNPROTECT(1);
-    return(value);
+    vmaxset(vmax);
+
+    return value;
 }
 
 /* Could there be methods for this op?	Checks
    only whether methods are currently being dispatched and, if so,
    whether methods are currently defined for this op. */
+attribute_hidden
 Rboolean R_has_methods(SEXP op)
 {
     R_stdGen_ptr_t ptr = R_get_standardGeneric_ptr(); int offset;
@@ -1467,7 +1510,7 @@ SEXP R_do_MAKE_CLASS(const char *what)
     PROTECT(call = allocVector(LANGSXP, 2));
     SETCAR(call, s_getClass);
     SETCAR(CDR(call), mkString(what));
-    e = eval(call, R_GlobalEnv);
+    e = eval(call, R_MethodsNamespace);
     UNPROTECT(1);
     return(e);
 }
@@ -1483,7 +1526,7 @@ SEXP R_getClassDef(const char *what)
     PROTECT(call = allocVector(LANGSXP, 2));
     SETCAR(call, s_getClassDef);
     SETCAR(CDR(call), mkString(what));
-    e = eval(call, R_GlobalEnv);
+    e = eval(call, R_MethodsNamespace);
     UNPROTECT(1);
     return(e);
 }
@@ -1493,6 +1536,7 @@ SEXP R_do_new_object(SEXP class_def)
 {
     static SEXP s_virtual = NULL, s_prototype, s_className;
     SEXP e, value;
+    const void *vmax = vmaxget();
     if(!s_virtual) {
 	s_virtual = install("virtual");
 	s_prototype = install("prototype");
@@ -1513,6 +1557,7 @@ SEXP R_do_new_object(SEXP class_def)
 	setAttrib(value, R_ClassSymbol, e);
 	SET_S4_OBJECT(value);
     }
+    vmaxset(vmax);
     return value;
 }
 
@@ -1527,32 +1572,34 @@ Rboolean attribute_hidden R_seemsOldStyleS4Object(SEXP object)
 	    getAttrib(klass, R_PackageSymbol) != R_NilValue) ? TRUE: FALSE;
 }
 
-
-SEXP R_isS4Object(SEXP object)
+SEXP attribute_hidden do_setS4Object(SEXP call, SEXP op, SEXP args, SEXP env)
 {
-    /* wanted: return isS4(object) ? mkTrue() : mkFalse(); */
-    return IS_S4_OBJECT(object) ? mkTrue() : mkFalse(); ;
-}
-
-SEXP R_setS4Object(SEXP object, SEXP onOff, SEXP do_complete)
-{
-  Rboolean flag = asLogical(onOff), complete = asInteger(do_complete);
+    checkArity(op, args);
+    SEXP object = CAR(args);
+    int flag = asLogical(CADR(args)), complete = asInteger(CADDR(args));
+    if(length(CADR(args)) != 1 || flag == NA_INTEGER)
+	error("invalid '%s' argument", "flag");
+    if(complete == NA_INTEGER)
+	error("invalid '%s' argument", "complete");
     if(flag == IS_S4_OBJECT(object))
 	return object;
     else
       return asS4(object, flag, complete);
 }
 
+#ifdef UNUSED
 SEXP R_get_primname(SEXP object)
 {
     SEXP f;
     if(TYPEOF(object) != BUILTINSXP && TYPEOF(object) != SPECIALSXP)
-	error(_("'R_get_primname' called on a non-primitive"));
+	error("'R_get_primname' called on a non-primitive");
     PROTECT(f = allocVector(STRSXP, 1));
     SET_STRING_ELT(f, 0, mkChar(PRIMNAME(object)));
     UNPROTECT(1);
     return f;
 }
+#endif
+
 
 Rboolean isS4(SEXP s)
 {
@@ -1577,7 +1624,7 @@ SEXP asS4(SEXP s, Rboolean flag, int complete)
 	      return value;
 	    /* else no plausible S3 object*/
 	    else if(complete == 1) /* ordinary case (2, for conditional) */
-	      error(_("Object of class \"%s\" does not correspond to a valid S3 object"),
+	      error(_("object of class \"%s\" does not correspond to a valid S3 object"),
 		      CHAR(STRING_ELT(R_data_class(s, FALSE), 0)));
 	    else return s; /*  unchanged */
 	}

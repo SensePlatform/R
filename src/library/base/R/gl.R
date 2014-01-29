@@ -21,12 +21,12 @@
 gl <- function (n, k, length = n*k, labels=1:n, ordered=FALSE)
   {
     ## We avoid calling factor(), for efficiency.
-    
+
     ## Must set levels before class.
     ## That way, `levels<-` will pick up an invalid
     ## labels specification.
-   
-    f <- rep(rep.int(1:n, rep.int(k,n)), length.out=length)
+
+    f <- rep_len(rep.int(1:n, rep.int(k,n)), length)
     levels(f) <- as.character(labels)
     class(f) <- c(if (ordered) "ordered", "factor")
     f

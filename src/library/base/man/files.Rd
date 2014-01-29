@@ -1,6 +1,6 @@
 % File src/library/base/man/files.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2012 R Core Team
+% Copyright 1995-2013 R Core Team
 % Distributed under GPL 2 or later
 
 \name{files}
@@ -43,7 +43,8 @@ Sys.junction(from, to)
   \item{overwrite}{logical; should existing destination files be overwritten?}
   \item{showWarnings}{logical; should the warnings on failure be shown?}
   \item{recursive}{logical.  If \code{to} is a directory, should
-    directories in \code{from} be copied (and their contents)?}
+    directories in \code{from} be copied (and their contents)?  (Like
+    \command{cp -R} on POSIX OSes.)}
   \item{copy.mode}{logical:  should file permission bits be copied where
     possible?  This applies to both files and directories.}
 }
@@ -108,12 +109,13 @@ Sys.junction(from, to)
   permissions are copied where possible, restricted by
   \sQuote{\link{umask}}.  Other security attributes such as ACLs are not
   copied.  On a POSIX filesystem the targets of symbolic links will be
-  copied rather than the links themselves.
-  
+  copied rather than the links themselves, and hard links are copied
+  separately.
+
   \code{file.symlink} and \code{file.link} make symbolic and hard links
   on those file systems which support them.  For \code{file.symlink} the
   \code{to} argument can specify a single existing directory.  (Unix and
-  Mac OS X native filesystems support both.  Windows has hard links to
+  OS X native filesystems support both.  Windows has hard links to
   files on NTFS file systems and concepts related to symbolic links on
   recent versions: see the section below on the Windows version of this
   help page.  What happens on a FAT or SMB-mounted file system is OS-specific.)
@@ -129,7 +131,7 @@ Sys.junction(from, to)
 }
 
 \section{Case-insensitive file systems}{
-  Case-insensitive file systems are the norm on Windows and Mac OS X,
+  Case-insensitive file systems are the norm on Windows and OS X,
   but can be found on all OSes (for example a FAT-formatted USB drive is
   probably case-insensitive).
 
@@ -144,7 +146,7 @@ Sys.junction(from, to)
   relative paths of the form \file{d:path}: try \file{d:./path}
   instead.  In particular, \file{d:} is not recognized as a directory.
   Nor are \samp{\\\\?\\} prefixes (and similar) supported.
-  
+
   Most of these functions accept UTF-8 filepaths not valid in the
   current locale.
 
@@ -168,7 +170,7 @@ Sys.junction(from, to)
   or more junctions: \code{to} should either specify a single existing
   directory or a set of non-existent file paths of the same length as
   \code{from}.
-  
+
   A version of symbolic linking to files/directories was implemented
   starting with Vista, and \code{file.symlink} makes use of that
   interface since \R 2.15.0.  However, it has restrictions (apart from
@@ -206,12 +208,12 @@ Sys.junction(from, to)
 
   \url{http://en.wikipedia.org/wiki/Hard_link} and
   \url{http://en.wikipedia.org/wiki/Symbolic_link} for the concepts of
-  links and their limitations. 
+  links and their limitations.
 }
 
 \examples{
-cat("file A\n", file="A")
-cat("file B\n", file="B")
+cat("file A\n", file = "A")
+cat("file B\n", file = "B")
 file.append("A", "B")
 file.create("A")
 file.append("A", rep("B", 10))
@@ -226,7 +228,7 @@ file.remove("B")
 file.symlink(file.path("..", c("A", "B")), ".")
 setwd("..")
 #endif
-unlink("tmp", recursive=TRUE)
+unlink("tmp", recursive = TRUE)
 file.remove("A", "B", "C")
 }
 \keyword{file}

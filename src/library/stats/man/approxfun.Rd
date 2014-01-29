@@ -12,10 +12,10 @@
   or a function performing the linear (or constant) interpolation.
 }
 \usage{
-approx   (x, y = NULL, xout, method = "linear", n=50,
+approx   (x, y = NULL, xout, method = "linear", n = 50,
           yleft, yright, rule = 1, f = 0, ties = mean)
 
-approxfun(x, y = NULL,       method  ="linear",
+approxfun(x, y = NULL,       method = "linear",
           yleft, yright, rule = 1, f = 0, ties = mean)
 }
 \arguments{
@@ -71,12 +71,13 @@ approxfun(x, y = NULL,       method  ="linear",
   The function \code{approxfun} returns a function performing (linear or
   constant) interpolation of the given data points.  For a given set of
   \code{x} values, this function will return the corresponding
-  interpolated values.  This is often more useful than \code{approx}.
+  interpolated values.  It uses data stored in its environment when it
+  was created, the details of which are subject to change.
 }
 \section{Warning}{
   The value returned by \code{approxfun} contains references to the code
   in the current version of \R: it is not intended to be saved and
-  loaded into a different \R session.
+  loaded into a different \R session.  This is safer for \R >= 3.0.0.
 }
 \seealso{
   \code{\link{spline}} and \code{\link{splinefun}} for spline
@@ -110,11 +111,11 @@ plot(approxfun(x, y, rule = 2:1), 0, 11,
 
 x <- c(2,2:4,4,4,5,5,7,7,7)
 y <- c(1:6, 5:4, 3:1)
-approx(x,y, xout=x)$y # warning
-(ay <- approx(x,y, xout=x, ties = "ordered")$y)
+approx(x, y, xout = x)$y # warning
+(ay <- approx(x, y, xout = x, ties = "ordered")$y)
 stopifnot(ay == c(2,2,3,6,6,6,4,4,1,1,1))
-approx(x,y, xout=x, ties = min)$y
-approx(x,y, xout=x, ties = max)$y
+approx(x, y, xout = x, ties = min)$y
+approx(x, y, xout = x, ties = max)$y
 
 %%-- MM has nice utility plotting -- do in demo ?
 }

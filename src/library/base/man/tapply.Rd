@@ -16,7 +16,7 @@ tapply(X, INDEX, FUN = NULL, \dots, simplify = TRUE)
 }
 \arguments{
   \item{X}{an atomic object, typically a vector.}
-  \item{INDEX}{list of one of more factors, each of same length as
+  \item{INDEX}{list of one or more factors, each of same length as
     \code{X}.  The elements are coerced to factors by \code{\link{as.factor}}.}
   \item{FUN}{the function to be applied, or \code{NULL}.  In the case of
     functions like \code{+}, \code{\%*\%}, etc., the function name must
@@ -33,7 +33,7 @@ tapply(X, INDEX, FUN = NULL, \dots, simplify = TRUE)
   If \code{FUN} is not \code{NULL}, it is passed to
   \code{\link{match.fun}}, and hence it can be a function or a symbol or
   character string naming a function.
-  
+
   When \code{FUN} is present, \code{tapply} calls \code{FUN} for each
   cell that has any data in it.  If \code{FUN} returns a single atomic
   value for each such cell (e.g., functions \code{mean} or \code{var})

@@ -20,12 +20,12 @@ kappa(z, \dots)
 \method{kappa}{lm}(z, \dots)
 \method{kappa}{qr}(z, \dots)
 
-.kappa_tri(z, exact = FALSE, LINPACK = TRUE, norm=NULL, \dots)
+.kappa_tri(z, exact = FALSE, LINPACK = TRUE, norm = NULL, \dots)
 
 rcond(x, norm = c("O","I","1"), triangular = FALSE, \dots)
 }
 \arguments{
-  \item{z,x}{A matrix or a the result of \code{\link{qr}} or a fit from
+  \item{z, x}{A matrix or a the result of \code{\link{qr}} or a fit from
     a class inheriting from \code{"lm"}.}
   \item{exact}{logical.  Should the result be exact?}
   \item{norm}{character string, specifying the matrix norm with respect
@@ -82,7 +82,7 @@ rcond(x, norm = c("O","I","1"), triangular = FALSE, \dots)
 \source{
   The LAPACK routines \code{DTRCON} and \code{ZTRCON} and the LINPACK
   routine \code{DTRCO}.
-  
+
   LAPACK and LINPACK are from \url{http://www.netlib.org/lapack} and
   \url{http://www.netlib.org/linpack} and their guides are listed
   in the references.
@@ -92,7 +92,7 @@ rcond(x, norm = c("O","I","1"), triangular = FALSE, \dots)
   \emph{LAPACK Users' Guide}. Third Edition. SIAM.\cr
   Available on-line at
   \url{http://www.netlib.org/lapack/lug/lapack_lug.html}.
-  
+
  Chambers, J. M. (1992)
   \emph{Linear models.}
   Chapter 4 of \emph{Statistical Models in S}
@@ -112,14 +112,14 @@ rcond(x, norm = c("O","I","1"), triangular = FALSE, \dots)
   \code{\link{qr}} for the \eqn{QR} one.
 }
 \examples{
-kappa(x1 <- cbind(1,1:10))# 15.71
+kappa(x1 <- cbind(1, 1:10)) # 15.71
 kappa(x1, exact = TRUE)        # 13.68
-kappa(x2 <- cbind(x1,2:11))# high! [x2 is singular!]
+kappa(x2 <- cbind(x1, 2:11)) # high! [x2 is singular!]
 
 hilbert <- function(n) { i <- 1:n; 1 / outer(i - 1, i, "+") }
 sv9 <- svd(h9 <- hilbert(9))$ d
-kappa(h9)# pretty high!
+kappa(h9)  # pretty high!
 kappa(h9, exact = TRUE) == max(sv9) / min(sv9)
-kappa(h9, exact = TRUE) / kappa(h9) # .677 (i.e., rel.error = 32\%)
+kappa(h9, exact = TRUE) / kappa(h9)  # 0.677 (i.e., rel.error = 32\%)
 }
 \keyword{math}

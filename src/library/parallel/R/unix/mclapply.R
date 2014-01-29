@@ -132,7 +132,7 @@ mclapply <- function(X, FUN, ..., mc.preschedule = TRUE, mc.set.seed = TRUE,
         if (inherits(f, "masterProcess")) { # this is the child process
             on.exit(mcexit(1L, structure("fatal error in wrapper code", class="try-error")))
             if (isTRUE(mc.set.seed)) mc.set.stream()
-            if (isTRUE(mc.silent)) closeStdout()
+            if (isTRUE(mc.silent)) closeStdout(TRUE)
             sendMaster(try(lapply(X = S, FUN = FUN, ...), silent = TRUE))
             mcexit(0L)
         }
@@ -161,7 +161,12 @@ mclapply <- function(X, FUN, ..., mc.preschedule = TRUE, mc.set.seed = TRUE,
                 }
             }
     }
-    for (i in seq_len(cores)) res[sindex[[i]]] <- job.res[[i]]
+    for (i in seq_len(cores)) {
+        this <- job.res[[i]]
+        if (inherits(this, "try-error")) { ## length-1 result
+            for (j in sindex[[i]]) res[[j]] <- this
+        } else res[sindex[[i]]] <- this
+    }
     if (length(has.errors)) {
         if (length(has.errors) == cores)
             warning("all scheduled cores encountered errors in user code")

@@ -158,6 +158,9 @@ pushBack <- function(data, connection, newLine = TRUE)
 pushBackLength <- function(connection)
     .Internal(pushBackLength(connection))
 
+clearPushBack <- function(connection)
+    .Internal(clearPushBack(connection))
+
 print.connection <- function(x, ...)
 {
     print(unlist(summary(x)))
@@ -259,9 +262,9 @@ socketSelect <- function(socklist, write = FALSE, timeout = NULL) {
     if (is.null(timeout))
         timeout <- -1
     else if (timeout < 0)
-        stop("supplied timeout must be NULL or a non-negative number")
+        stop("'timeout' must be NULL or a non-negative number")
     if (length(write) < length(socklist))
-        write <- rep(write, length.out = length(socklist))
+        write <- rep_len(write, length(socklist))
     .Internal(sockSelect(socklist, write, timeout))
 }
 

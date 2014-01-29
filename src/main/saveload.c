@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1997--2012  The R Core Team
+ *  Copyright (C) 1997--2013  The R Core Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #define NEED_CONNECTION_PSTREAMS
 #define R_USE_SIGNALS 1
 #include <Defn.h>
+#include <Internal.h>
 #include <Rinterface.h>
 #include <Rmath.h>
 #include <Fileio.h>
@@ -601,7 +602,12 @@ static void RestoreSEXP(SEXP s, FILE *fp, InputRoutines *m, NodeInfo *node, int 
     case BUILTINSXP:
 	len = m->InInteger(fp, d);
 	R_AllocStringBuffer(MAXELTSIZE - 1, &(d->buffer));
-	SET_PRIMOFFSET(s, StrToInternal(m->InString(fp, d)));
+	int index = StrToInternal(m->InString(fp, d));
+	if (index == NA_INTEGER) {
+	    warning(_("unrecognized internal function name \"%s\""), d->buffer.data); 
+	    index = 0;   /* zero doesn't make sense, but is back compatible with 3.0.0 and earlier */
+	}
+	SET_PRIMOFFSET(s, index);
 	break;
     case CHARSXP:
 	len = m->InInteger(fp, d);
@@ -814,7 +820,7 @@ static SEXP NewLoadSpecialHook (SEXPTYPE type)
 
 #define HASHSIZE 1099
 
-#define PTRHASH(obj) (((uintptr_t) (obj)) >> 2)
+#define PTRHASH(obj) (((R_size_t) (obj)) >> 2)
 
 #define HASH_TABLE_KEYS_LIST(ht) CAR(ht)
 #define SET_HASH_TABLE_KEYS_LIST(ht, v) SETCAR(ht, v)
@@ -846,7 +852,7 @@ static void FixHashEntries(SEXP ht)
 
 static void HashAdd(SEXP obj, SEXP ht)
 {
-    int pos = PTRHASH(obj) % HASH_TABLE_SIZE(ht);
+    R_size_t pos = PTRHASH(obj) % HASH_TABLE_SIZE(ht);
     int count = HASH_TABLE_COUNT(ht) + 1;
     SEXP val = ScalarInteger(count);
     SEXP cell = CONS(val, HASH_BUCKET(ht, pos));
@@ -860,7 +866,7 @@ static void HashAdd(SEXP obj, SEXP ht)
 
 static int HashGet(SEXP item, SEXP ht)
 {
-    int pos = PTRHASH(item) % HASH_TABLE_SIZE(ht);
+    R_size_t pos = PTRHASH(item) % HASH_TABLE_SIZE(ht);
     SEXP cell;
     for (cell = HASH_BUCKET(ht, pos); cell != R_NilValue; cell = CDR(cell))
 	if (item == TAG(cell))
@@ -1162,7 +1168,7 @@ static SEXP InCHARSXP (FILE *fp, InputRoutines *m, SaveLoadData *d)
 {
     SEXP s;
     char *tmp;
-    int len;
+    size_t len;
 
     /* FIXME: rather than use strlen, use actual length of string when
      * sized strings get implemented in R's save/load code.  */
@@ -1259,7 +1265,12 @@ static SEXP NewReadItem (SEXP sym_table, SEXP env_table, FILE *fp,
     case SPECIALSXP:
     case BUILTINSXP:
 	R_AllocStringBuffer(MAXELTSIZE - 1, &(d->buffer));
-	PROTECT(s = mkPRIMSXP(StrToInternal(m->InString(fp, d)), type == BUILTINSXP));
+	int index = StrToInternal(m->InString(fp, d));
+	if (index == NA_INTEGER) {
+	    warning(_("unrecognized internal function name \"%s\""), d->buffer.data); 
+	    PROTECT(s = R_NilValue);
+	} else
+	    PROTECT(s = mkPRIMSXP(index, type == BUILTINSXP));
 	break;
     case CHARSXP:
     case LGLSXP:
@@ -1379,9 +1390,9 @@ static int InIntegerAscii(FILE *fp, SaveLoadData *unused)
 
 static void OutStringAscii(FILE *fp, const char *x, SaveLoadData *unused)
 {
-    int i, nbytes;
+    size_t i, nbytes;
     nbytes = strlen(x);
-    fprintf(fp, "%d ", nbytes);
+    fprintf(fp, "%d ", (int) nbytes);
     for (i = 0; i < nbytes; i++) {
 	switch(x[i]) {
 	case '\n': fprintf(fp, "\\n");  break;
@@ -1775,7 +1786,8 @@ static void R_WriteMagic(FILE *fp, int number)
 static int R_ReadMagic(FILE *fp)
 {
     unsigned char buf[6];
-    int d1, d2, d3, d4, count;
+    int d1, d2, d3, d4;
+    size_t count;
 
     count = fread((char*)buf, sizeof(char), 5, fp);
     if (count != 5) {
@@ -2278,7 +2290,7 @@ SEXP attribute_hidden do_saveToConn(SEXP call, SEXP op, SEXP args, SEXP env)
     if (con->text)
 	Rconn_printf(con, "%s", magic);
     else {
-	int len = strlen(magic);
+	size_t len = strlen(magic);
 	if (len != con->write(magic, 1, len, con))
 	    error(_("error writing to connection"));
     }
@@ -2311,22 +2323,25 @@ SEXP attribute_hidden do_saveToConn(SEXP call, SEXP op, SEXP args, SEXP env)
 
 /* Read and checks the magic number, open the connection if needed */
 
+extern int R_ReadItemDepth;
+extern int R_InitReadItemDepth;
+
 SEXP attribute_hidden do_loadFromConn2(SEXP call, SEXP op, SEXP args, SEXP env)
 {
-    /* loadFromConn2(conn, environment) */
+    /* loadFromConn2(conn, environment, verbose) */
 
     struct R_inpstream_st in;
     Rconnection con;
     SEXP aenv, res = R_NilValue;
     unsigned char buf[6];
-    int count;
+    size_t count;
     Rboolean wasopen;
     RCNTXT cntxt;
 
     checkArity(op, args);
 
     con = getConnection(asInteger(CAR(args)));
-
+    
     wasopen = con->isopen;
     if(!wasopen) {
 	char mode[5];	
@@ -2359,7 +2374,9 @@ SEXP attribute_hidden do_loadFromConn2(SEXP call, SEXP op, SEXP args, SEXP env)
 	strncmp((char*)buf, "RDX2\n", 5) == 0) {
 	R_InitConnInPStream(&in, con, R_pstream_any_format, NULL, NULL);
 	/* PROTECT is paranoia: some close() method might allocate */
+	R_InitReadItemDepth = R_ReadItemDepth = -asInteger(CADDR(args));
 	PROTECT(res = RestoreToEnv(R_Unserialize(&in), aenv));
+	R_ReadItemDepth = 0;
 	if(!wasopen) {endcontext(&cntxt); con->close(con);}
 	UNPROTECT(1);
     } else

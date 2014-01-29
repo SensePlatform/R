@@ -67,7 +67,7 @@
 #include "RBufferUtils.h"
 
 
-#if !defined(__STDC_ISO_10646__) && (defined(__APPLE_CC__) || defined(__FreeBSD__))
+#if !defined(__STDC_ISO_10646__) && (defined(__APPLE__) || defined(__FreeBSD__))
 /* This may not be 100% true (see the comment in rlocales.h),
    but it seems true in normal locales */
 # define __STDC_ISO_10646__
@@ -88,6 +88,7 @@ extern int R_OutputCon; /* from connections.c */
 #define BUFSIZE 8192  /* used by Rprintf etc */
 
 /* Only if ierr < 0 or not is currently used */
+attribute_hidden
 R_size_t R_Decode2Long(char *p, int *ierr)
 {
     R_size_t v = strtol(p, &p, 10);
@@ -98,11 +99,11 @@ R_size_t R_Decode2Long(char *p, int *ierr)
 	REprintf("R_Decode2Long(): v=%ld\n", v);
     if(p[0] == 'G') {
 	if((Giga * (double)v) > R_SIZE_T_MAX) { *ierr = 4; return(v); }
-	return (Giga*v);
+	return (R_size_t) Giga * v;
     }
     else if(p[0] == 'M') {
 	if((Mega * (double)v) > R_SIZE_T_MAX) { *ierr = 1; return(v); }
-	return (Mega*v);
+	return (R_size_t) Mega * v;
     }
     else if(p[0] == 'K') {
 	if((1024 * (double)v) > R_SIZE_T_MAX) { *ierr = 2; return(v); }
@@ -140,15 +141,18 @@ const char *EncodeInteger(int x, int w)
     return buff;
 }
 
-const char *EncodeRaw(Rbyte x)
+attribute_hidden
+const char *EncodeRaw(Rbyte x, const char * prefix)
 {
     static char buff[10];
-    sprintf(buff, "%02x", x);
+    sprintf(buff, "%s%02x", prefix, x);
     return buff;
 }
 
+attribute_hidden
 const char *EncodeEnvironment(SEXP x)
 {
+    const void *vmax = vmaxget();
     static char ch[1000];
     if (x == R_GlobalEnv)
 	sprintf(ch, "<environment: R_GlobalEnv>");
@@ -164,6 +168,7 @@ const char *EncodeEnvironment(SEXP x)
 		translateChar(STRING_ELT(R_NamespaceEnvSpec(x), 0)));
     else snprintf(ch, 1000, "<environment: %p>", (void *)x);
 
+    vmaxset(vmax);
     return ch;
 }
 
@@ -287,7 +292,7 @@ const char
    which Western versions at least do not.).
 */
 
-#include <R_ext/rlocale.h> /* redefines isw* functions */
+#include <rlocale.h> /* redefines isw* functions */
 
 #ifdef Win32
 #include "rgui_UTF8.h"
@@ -419,11 +424,16 @@ int Rstrlen(SEXP s, int quote)
    format().
  */
 
+attribute_hidden
 const char *EncodeString(SEXP s, int w, int quote, Rprt_adj justify)
 {
     int b, b0, i, j, cnt;
     const char *p; char *q, buf[11];
-    cetype_t ienc = CE_NATIVE;
+    cetype_t ienc = getCharCE(s);
+    Rboolean useUTF8 = w < 0;
+    const void *vmax = vmaxget();
+
+    if (w < 0) w = w + 1000000;
 
     /* We have to do something like this as the result is returned, and
        passed on by EncodeElement -- so no way could be end user be
@@ -440,7 +450,6 @@ const char *EncodeString(SEXP s, int w, int quote, Rprt_adj justify)
     } else {
 #ifdef Win32
 	if(WinUTF8out) {
-	    ienc = getCharCE(s);
 	    if(ienc == CE_UTF8) {
 		p = CHAR(s);
 		i = Rstrlen(s, quote);
@@ -460,6 +469,7 @@ const char *EncodeString(SEXP s, int w, int quote, Rprt_adj justify)
 #endif
 	{
 	    if(IS_BYTES(s)) {
+		ienc = CE_NATIVE;
 		p = CHAR(s);
 		cnt = (int) strlen(p);
 		const char *q;
@@ -478,7 +488,12 @@ const char *EncodeString(SEXP s, int w, int quote, Rprt_adj justify)
 		*qq = '\0';
 		p = pp;
 		i = cnt;
+	    } else if (useUTF8 && ienc == CE_UTF8) {
+		p = CHAR(s);
+		i = Rstrlen(s, quote);
+		cnt = LENGTH(s);
 	    } else {
+		ienc = CE_NATIVE;
 		p = translateChar(s);
 		if(p == CHAR(s)) {
 		    i = Rstrlen(s, quote);
@@ -648,10 +663,15 @@ const char *EncodeString(SEXP s, int w, int quote, Rprt_adj justify)
 	for(i = 0 ; i < b ; i++) *q++ = ' ';
     }
     *q = '\0';
+
+    vmaxset(vmax);
     return buffer->data;
 }
 
 /* EncodeElement is called by cat(), write.table() and deparsing. */
+
+/* NB this is called by R.app even though it is in no public header, so 
+   alter there if you alter this */
 const char *EncodeElement(SEXP x, int indx, int quote, char dec)
 {
     int w, d, e, wi, di, ei;
@@ -679,7 +699,7 @@ const char *EncodeElement(SEXP x, int indx, int quote, char dec)
 	res = EncodeComplex(COMPLEX(x)[indx], w, d, e, wi, di, ei, dec);
 	break;
     case RAWSXP:
-	res = EncodeRaw(RAW(x)[indx]);
+	res = EncodeRaw(RAW(x)[indx], "");
 	break;
     default:
 	res = NULL; /* -Wall */
@@ -719,6 +739,7 @@ int vasprintf(char **strp, const char *fmt, va_list ap)
 #endif
 
 # define R_BUFSIZE BUFSIZE
+attribute_hidden
 void Rcons_vprintf(const char *format, va_list arg)
 {
     char buf[R_BUFSIZE], *p = buf;
@@ -825,12 +846,12 @@ void REvprintf(const char *format, va_list arg)
     }
 }
 
-int attribute_hidden IndexWidth(int n)
+int attribute_hidden IndexWidth(R_xlen_t n)
 {
     return (int) (log10(n + 0.5) + 1);
 }
 
-void attribute_hidden VectorIndex(int i, int w)
+void attribute_hidden VectorIndex(R_xlen_t i, int w)
 {
 /* print index label "[`i']" , using total width `w' (left filling blanks) */
     Rprintf("%*s[%ld]", w-IndexWidth(i)-2, "", i);

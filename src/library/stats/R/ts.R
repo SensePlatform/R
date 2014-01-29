@@ -26,7 +26,7 @@ deltat    <- function(x, ...) UseMethod("deltat")
 
 ts <- function(data = NA, start = 1, end = numeric(), frequency = 1,
 	       deltat = 1, ts.eps  =  getOption("ts.eps"),
-               class = if(nseries > 1) c("mts", "ts") else "ts",
+	       class = if(nseries > 1) c("mts", "ts", "matrix") else "ts",
                names = if(!is.null(dimnames(data))) colnames(data)
                else paste("Series", seq(nseries))
                )
@@ -69,10 +69,10 @@ ts <- function(data = NA, start = 1, end = numeric(), frequency = 1,
     if(nobs != ndata)
 	data <-
 	    if(NCOL(data) == 1) {
-		if(ndata < nobs) rep(data, length.out = nobs)
+		if(ndata < nobs) rep_len(data, nobs)
 		else if(ndata > nobs) data[1L:nobs]
 	    } else {
-		if(ndata < nobs) data[rep(1L:ndata, length.out = nobs), ]
+		if(ndata < nobs) data[rep_len(1L:ndata, nobs), ]
 		else if(ndata > nobs) data[1L:nobs, ]
 	    }
     ## FIXME: The following "attr<-"() calls C tspgets() which uses a
@@ -156,8 +156,7 @@ as.ts.default <- function(x, ...)
         tsps <- sapply(sers, tsp)
     }
     if(dframe) {
-        x <- vector("list", nser)
-        names(x) <- nmsers
+	x <- setNames(vector("list", nser), nmsers)
     } else {
         ns <- sum(nsers)
         x <- matrix(, n, ns)
@@ -539,7 +538,8 @@ plot.ts <-
 	    if(do.lab)
 		text(xy, labels =
 		     if(is.character(xy.labels)) xy.labels
-		     else if(all(tsp(x) == tsp(y))) formatC(time(x), width = 1)
+		     else if(all(tsp(x) == tsp(y)))
+                         formatC(unclass(time(x)), width = 1)
 		     else seq_along(xy$x),
 		     col = col, cex = cex)
 	    if(xy.lines)
@@ -559,10 +559,10 @@ plot.ts <-
 	    k <- ncol(x)
 	    tx <- time(x)
 	    xy <- xy.coords(x = matrix(rep.int(tx, k), ncol = k),
-			    y = x, log=log)
+			    y = x, log = log)
 	    xy$x <- tx
 	}
-	else xy <- xy.coords(x, NULL, log=log)
+	else xy <- xy.coords(x, NULL, log = log)
 	if(is.null(xlim)) xlim <- range(xy$x)
 	if(is.null(ylim)) ylim <- range(xy$y[is.finite(xy$y)])
 	plot.new()
@@ -623,7 +623,7 @@ window.default <- function(x, start = NULL, end = NULL,
     } else {
         thin <- 1
         yfreq <- xfreq
-        warning("Frequency not changed")
+        warning("'frequency' not changed")
     }
     start <- if(is.null(start))
 	xtsp[1L]
@@ -698,7 +698,7 @@ window.ts <- function (x, ...) as.ts(window.default(x, ...))
     m <- match.call(expand.dots = FALSE)
     m$value <- NULL
     m$extend <- TRUE
-    m[[1L]] <- as.name("window")
+    m[[1L]] <- quote(stats::window)
     xx <- eval.parent(m)
     xxtsp <- tsp(xx)
     start <- xxtsp[1L]; end <- xxtsp[2L]
@@ -786,8 +786,10 @@ arima.sim <- function(model, n, rand.gen = rnorm,
             stop("number of differences must be a positive integer")
     }
     if(!missing(start.innov) && length(start.innov) < n.start)
-        stop(gettextf("'start.innov' is too short: need %d points", n.start),
-             domain = NA)
+        stop(sprintf(ngettext(n.start,
+                              "'start.innov' is too short: need %d point",
+                              "'start.innov' is too short: need %d points"),
+                     n.start), domain = NA)
     x <- ts(c(start.innov[seq_len(n.start)], innov[1L:n]), start = 1 - n.start)
     if(length(model$ma)) {
         x <- filter(x, c(1, model$ma), sides = 1L)

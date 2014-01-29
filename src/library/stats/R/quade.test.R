@@ -31,9 +31,9 @@ function(y, groups, blocks, ...)
             stop("NA's are not allowed in 'groups' or 'blocks'")
         if(any(diff(c(length(y), length(groups), length(blocks))) != 0L))
             stop("'y', 'groups' and 'blocks' must have the same length")
-        DNAME <- paste(DNAME, ", ",
-                       deparse(substitute(groups)), " and ",
-                       deparse(substitute(blocks)), sep = "")
+        DNAME <- paste0(DNAME, ", ",
+                        deparse(substitute(groups)), " and ",
+                        deparse(substitute(blocks)))
         if(any(table(groups, blocks) != 1))
             stop("not an unreplicated complete block design")
         groups <- factor(groups)
@@ -94,7 +94,7 @@ function(formula, data, subset, na.action, ...)
     m$formula <- formula
     if(is.matrix(eval(m$data, parent.frame())))
         m$data <- as.data.frame(data)
-    m[[1L]] <- as.name("model.frame")
+    m[[1L]] <- quote(stats::model.frame)
     mf <- eval(m, parent.frame())
     DNAME <- paste(names(mf), collapse = " and ")
     names(mf) <- NULL

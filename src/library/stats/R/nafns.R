@@ -61,7 +61,7 @@ na.omit.data.frame <- function(object, ...)
 {
     ## Assuming a data.frame like object
     n <- length(object)
-    omit <- FALSE
+    omit <- logical(nrow(object))
     vars <- seq_len(n)
     for(j in vars) {
 	x <- object[[j]]
@@ -77,8 +77,8 @@ na.omit.data.frame <- function(object, ...)
     }
     xx <- object[!omit, , drop = FALSE]
     if (any(omit > 0L)) {
-	temp <- seq(omit)[omit]
-	names(temp) <- attr(object, "row.names")[omit]
+	temp <- setNames(seq(omit)[omit],
+			 attr(object, "row.names")[omit])
 	attr(temp, "class") <- "omit"
 	attr(xx, "na.action") <- temp
     }
@@ -115,7 +115,7 @@ na.exclude.data.frame <- function(object, ...)
 {
     ## Assuming a data.frame like object
     n <- length(object)
-    omit <- FALSE
+    omit <- logical(nrow(object))
     vars <- seq_len(n)
     for(j in vars) {
 	x <- object[[j]]
@@ -131,8 +131,8 @@ na.exclude.data.frame <- function(object, ...)
     }
     xx <- object[!omit, , drop = FALSE]
     if (any(omit > 0L)) {
-	temp <- seq(omit)[omit]
-	names(temp) <- attr(object, "row.names")[omit]
+	temp <- setNames(seq(omit)[omit],
+			 attr(object, "row.names")[omit])
 	attr(temp, "class") <- "exclude"
 	attr(xx, "na.action") <- temp
     }

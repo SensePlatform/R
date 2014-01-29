@@ -87,7 +87,8 @@
 #endif
 
 #define R_USE_SIGNALS 1
-#include "Defn.h"
+#include <Defn.h>
+#include <Internal.h>
 #include <R_ext/Callbacks.h>
 
 #define IS_USER_DATABASE(rho)  OBJECT((rho)) && inherits((rho), "UserDefinedDatabase")
@@ -166,7 +167,6 @@ static SEXP getActiveValue(SEXP fun)
 #define HASHPRI(x)	     TRUELENGTH(x)
 #define HASHTABLEGROWTHRATE  1.2
 #define HASHMINSIZE	     29
-#define SET_HASHSIZE(x,v)    SETLENGTH(x,v)
 #define SET_HASHPRI(x,v)     SET_TRUELENGTH(x,v)
 
 #define IS_HASHED(x)	     (HASHTAB(x) != R_NilValue)
@@ -317,7 +317,6 @@ static SEXP R_NewHashTable(int size)
 
     /* Allocate hash table in the form of a vector */
     PROTECT(table = allocVector(VECSXP, size));
-    SET_HASHSIZE(table, size);
     SET_HASHPRI(table, 0);
     UNPROTECT(1);
     return(table);
@@ -368,8 +367,11 @@ static SEXP DeleteItem(SEXP symbol, SEXP lst)
 
 static void R_HashDelete(int hashcode, SEXP symbol, SEXP table)
 {
-    SET_VECTOR_ELT(table, hashcode % HASHSIZE(table),
-	DeleteItem(symbol, VECTOR_ELT(table, hashcode % HASHSIZE(table))));
+    SEXP list = DeleteItem(symbol,
+			   VECTOR_ELT(table, hashcode % HASHSIZE(table)));
+    if (list == R_NilValue)
+	SET_HASHPRI(table, HASHPRI(table) - 1);
+    SET_VECTOR_ELT(table, hashcode % HASHSIZE(table), list);
     return;
 }
 
@@ -630,6 +632,7 @@ void attribute_hidden InitBaseEnv()
 void attribute_hidden InitGlobalEnv()
 {
     R_GlobalEnv = R_NewHashedEnv(R_BaseEnv, ScalarInteger(0));
+    R_MethodsNamespace = R_GlobalEnv; // so it is initialized.
 #ifdef NEW_CODE /* Not used */
     HASHTAB(R_GlobalEnv) = R_NewHashTable(100);
 #endif
@@ -896,21 +899,25 @@ R_varloc_t R_findVarLocInFrame(SEXP rho, SEXP symbol)
     return binding == R_NilValue ? NULL : (R_varloc_t) binding;
 }
 
+attribute_hidden
 SEXP R_GetVarLocValue(R_varloc_t vl)
 {
     return BINDING_VALUE((SEXP) vl);
 }
 
+attribute_hidden
 SEXP R_GetVarLocSymbol(R_varloc_t vl)
 {
     return TAG((SEXP) vl);
 }
 
+/* used in methods */
 Rboolean R_GetVarLocMISSING(R_varloc_t vl)
 {
     return MISSING((SEXP) vl);
 }
 
+attribute_hidden
 void R_SetVarLocValue(R_varloc_t vl, SEXP value)
 {
     SET_BINDING_VALUE((SEXP) vl, value);
@@ -1230,6 +1237,7 @@ static int ddVal(SEXP symbol)
 
 */
 
+attribute_hidden
 SEXP ddfindVar(SEXP symbol, SEXP rho)
 {
     int i;
@@ -1244,7 +1252,7 @@ SEXP ddfindVar(SEXP symbol, SEXP rho)
 	    return(CAR(vl));
 	}
 	else
-	    error(_("The ... list does not contain %d elements"), i);
+	    error(_("the ... list does not contain %d elements"), i);
     }
     else error(_("..%d used in an incorrect context, no ... to look in"), i);
 
@@ -1255,7 +1263,7 @@ SEXP ddfindVar(SEXP symbol, SEXP rho)
 
 /*----------------------------------------------------------------------
 
-  dynamicFindVar
+  dynamicfindVar
 
   This function does a variable lookup, but uses dynamic scoping rules
   rather than the lexical scoping rules used in findVar.
@@ -1265,6 +1273,7 @@ SEXP ddfindVar(SEXP symbol, SEXP rho)
 
 */
 
+#ifdef UNUSED
 SEXP dynamicfindVar(SEXP symbol, RCNTXT *cptr)
 {
     SEXP vl;
@@ -1277,6 +1286,7 @@ SEXP dynamicfindVar(SEXP symbol, RCNTXT *cptr)
     }
     return R_UnboundValue;
 }
+#endif
 
 
 
@@ -1533,7 +1543,7 @@ SEXP attribute_hidden do_assign(SEXP call, SEXP op, SEXP args, SEXP rho)
     else {
 	if (length(CAR(args)) > 1)
 	    warning(_("only the first element is used as variable name"));
-	name = install(translateChar(STRING_ELT(CAR(args), 0)));
+	name = installTrChar(STRING_ELT(CAR(args), 0));
     }
     PROTECT(val = CADR(args));
     aenv = CADDR(args);
@@ -1575,7 +1585,7 @@ SEXP attribute_hidden do_list2env(SEXP call, SEXP op, SEXP args, SEXP rho)
 	error(_("'envir' argument must be an environment"));
 
     for(int i = 0; i < LENGTH(x) ; i++) {
-	SEXP name = install(translateChar(STRING_ELT(xnms, i)));
+	SEXP name = installTrChar(STRING_ELT(xnms, i));
 	defineVar(name, VECTOR_ELT(x, i), envir);
     }
 
@@ -1623,6 +1633,8 @@ static int RemoveVariable(SEXP name, int hashcode, SEXP env)
 	list = RemoveFromList(name, VECTOR_ELT(hashtab, idx), &found);
 	if (found) {
 	    if(env == R_GlobalEnv) R_DirtyImage = 1;
+	    if (list == R_NilValue)
+		SET_HASHPRI(hashtab, HASHPRI(hashtab) - 1);
 	    SET_VECTOR_ELT(hashtab, idx, list);
 #ifdef USE_GLOBAL_CACHE
 	    if (IS_GLOBAL_FRAME(env))
@@ -1672,7 +1684,7 @@ SEXP attribute_hidden do_remove(SEXP call, SEXP op, SEXP args, SEXP rho)
 
     for (i = 0; i < LENGTH(name); i++) {
 	done = 0;
-	tsym = install(translateChar(STRING_ELT(name, i)));
+	tsym = installTrChar(STRING_ELT(name, i));
 	if( !HASHASH(PRINTNAME(tsym)) )
 	    hashcode = R_Newhashpjw(CHAR(PRINTNAME(tsym)));
 	else
@@ -1719,7 +1731,7 @@ SEXP attribute_hidden do_get(SEXP call, SEXP op, SEXP args, SEXP rho)
     if (!isValidStringF(CAR(args)))
 	error(_("invalid first argument"));
     else
-	t1 = install(translateChar(STRING_ELT(CAR(args), 0)));
+	t1 = installTrChar(STRING_ELT(CAR(args), 0));
 
     /* envir :	originally, the "where=" argument */
 
@@ -1827,9 +1839,8 @@ static SEXP gfind(const char *name, SEXP env, SEXPTYPE mode,
  */
 SEXP attribute_hidden do_mget(SEXP call, SEXP op, SEXP args, SEXP rho)
 {
-    SEXP ans, env, x, mode, ifnotfound, ifnfnd;
-    SEXPTYPE gmode; /* is unsigned int */
-    int ginherits = 0, nvals, nmode, nifnfnd, i;
+    SEXP ans, env, x, mode, ifnotfound;
+    int ginherits = 0, nvals, nmode, nifnfnd;
 
     checkArity(op, args);
 
@@ -1841,11 +1852,9 @@ SEXP attribute_hidden do_mget(SEXP call, SEXP op, SEXP args, SEXP rho)
     /* It must be present and a string */
     if (!isString(x) )
 	error(_("invalid first argument"));
-    for(i = 0; i < nvals; i++)
+    for(int i = 0; i < nvals; i++)
 	if( isNull(STRING_ELT(x, i)) || !CHAR(STRING_ELT(x, 0))[0] )
 	    error(_("invalid name in position %d"), i+1);
-
-    /* FIXME: should we install them all?) */
 
     env = CADR(args);
     if (ISNULL(env)) {
@@ -1875,35 +1884,19 @@ SEXP attribute_hidden do_mget(SEXP call, SEXP op, SEXP args, SEXP rho)
 
     PROTECT(ans = allocVector(VECSXP, nvals));
 
-    /* now for each element of x, we look for it, using the inherits,
-       etc */
-
-    for(i = 0; i < nvals; i++) {
-	if (isString(mode)) { /* ASCII */
-	    if (!strcmp(CHAR(STRING_ELT(CAR(CDDR(args)), i % nmode )), "function"))
-		gmode = FUNSXP;
-	    else
-		gmode = str2type(CHAR(STRING_ELT(CAR(CDDR(args)), i % nmode )));
-	} else {
-	    error(_("invalid '%s' argument"), "mode");
-	    gmode = FUNSXP; /* -Wall */
+    for(int i = 0; i < nvals; i++) {
+	SEXPTYPE gmode;
+	if (!strcmp(CHAR(STRING_ELT(CAR(CDDR(args)), i % nmode)), "function"))
+	    gmode = FUNSXP;
+	else {
+	    gmode = str2type(CHAR(STRING_ELT(CAR(CDDR(args)), i % nmode)));
+	    if(gmode == (SEXPTYPE) (-1))
+		error(_("invalid '%s' argument"), "mode");
 	}
-
-	/* is the mode provided one of the real modes? */
-	if( gmode == (SEXPTYPE) (-1))
-	    error(_("invalid '%s' argument"), "mode");
-
-
-	if( TYPEOF(ifnotfound) != VECSXP )
-	    error(_("invalid '%s' argument"), "ifnotfound");
-	if( nifnfnd == 1 ) /* length has been checked to be 1 or nvals. */
-	    ifnfnd = VECTOR_ELT(ifnotfound, 0);
-	else
-	    ifnfnd = VECTOR_ELT(ifnotfound, i);
-
 	SET_VECTOR_ELT(ans, i,
-		       gfind(translateChar(STRING_ELT(x,i % nvals)), env,
-			     gmode, ifnfnd, ginherits, rho));
+		       duplicate(gfind(translateChar(STRING_ELT(x, i % nvals)), env,
+			     gmode, VECTOR_ELT(ifnotfound, i % nifnfnd),
+			     ginherits, rho)));
     }
 
     setAttrib(ans, R_NamesSymbol, duplicate(x));
@@ -2000,7 +1993,7 @@ SEXP attribute_hidden do_missing(SEXP call, SEXP op, SEXP args, SEXP rho)
     check1arg(args, call, "x");
     s = sym = CAR(args);
     if( isString(sym) && length(sym)==1 )
-	s = sym = install(translateChar(STRING_ELT(CAR(args), 0)));
+	s = sym = installTrChar(STRING_ELT(CAR(args), 0));
     if (!isSymbol(sym))
 	errorcall(call, _("invalid use of 'missing'"));
 
@@ -2625,7 +2618,10 @@ SEXP attribute_hidden do_eapply(SEXP call, SEXP op, SEXP args, SEXP rho)
 
     for(i = 0; i < k2; i++) {
 	INTEGER(ind)[0] = i+1;
-	SET_VECTOR_ELT(ans, i, eval(R_fcall, rho));
+	SEXP tmp = eval(R_fcall, rho);
+	if (NAMED(tmp))
+	    tmp = duplicate(tmp);
+	SET_VECTOR_ELT(ans, i, tmp);
     }
 
     if (useNms) {
@@ -2749,6 +2745,7 @@ SEXP attribute_hidden do_pos2env(SEXP call, SEXP op, SEXP args, SEXP rho)
 static SEXP matchEnvir(SEXP call, const char *what)
 {
     SEXP t, name;
+    const void *vmax = vmaxget();
     if(!strcmp(".GlobalEnv", what))
 	return R_GlobalEnv;
     if(!strcmp("package:base", what))
@@ -2756,10 +2753,14 @@ static SEXP matchEnvir(SEXP call, const char *what)
     for (t = ENCLOS(R_GlobalEnv); t != R_EmptyEnv ; t = ENCLOS(t)) {
 	name = getAttrib(t, R_NameSymbol);
 	if(isString(name) && length(name) > 0 &&
-	   !strcmp(translateChar(STRING_ELT(name, 0)), what))
+	   !strcmp(translateChar(STRING_ELT(name, 0)), what)) {
+	    vmaxset(vmax);
 	    return t;
+	}
     }
     errorcall(call, _("no item called \"%s\" on the search list"), what);
+    /* not reached */
+    vmaxset(vmax);
     return R_NilValue;
 }
 
@@ -3216,7 +3217,7 @@ static SEXP checkNSname(SEXP call, SEXP name)
 	break;
     case STRSXP:
 	if (LENGTH(name) >= 1) {
-	    name = install(translateChar(STRING_ELT(name, 0)));
+	    name = installTrChar(STRING_ELT(name, 0));
 	    break;
 	}
 	/* else fall through */
@@ -3305,8 +3306,8 @@ SEXP attribute_hidden do_importIntoEnv(SEXP call, SEXP op, SEXP args, SEXP rho)
 
     n = LENGTH(impnames);
     for (i = 0; i < n; i++) {
-	impsym = install(translateChar(STRING_ELT(impnames, i)));
-	expsym = install(translateChar(STRING_ELT(expnames, i)));
+	impsym = installTrChar(STRING_ELT(impnames, i));
+	expsym = installTrChar(STRING_ELT(expnames, i));
 
 	/* find the binding--may be a CONS cell or a symbol */
 	SEXP binding = R_NilValue;
@@ -3432,15 +3433,10 @@ static void R_StringHash_resize(unsigned int newsize)
        enough memory, and ideally we would recover from that and
        carry over with a table that was getting full.
      */
-#ifdef USE_ATTRIB_FIELD_FOR_CHARSXP_CACHE_CHAINS
     /* When using the ATTRIB fields to maintain the chains the chain
        moving is destructive and does not involve allocation.  This is
        therefore the only point where GC can occur. */
     new_table = R_NewHashTable(newsize);
-#else
-    PROTECT(old_table);
-    PROTECT(new_table = R_NewHashTable(newsize));
-#endif
     newmask = newsize - 1;
 
     /* transfer chains from old table to new table */
@@ -3455,19 +3451,12 @@ static void R_StringHash_resize(unsigned int newsize)
 	    if (ISNULL(new_chain))
 		SET_HASHPRI(new_table, HASHPRI(new_table) + 1);
 	    /* move the current chain link to the new chain */
-#ifdef USE_ATTRIB_FIELD_FOR_CHARSXP_CACHE_CHAINS
 	    /* this is a destrictive modification */
 	    new_chain = SET_CXTAIL(val, new_chain);
 	    SET_VECTOR_ELT(new_table, new_hashcode, new_chain);
-#else
-	    SET_VECTOR_ELT(new_table, new_hashcode, CONS(val, new_chain));
-#endif
 	    chain = next;
 	}
     }
-#ifndef USE_ATTRIB_FIELD_FOR_CHARSXP_CACHE_CHAINS
-    UNPROTECT(2);
-#endif
     R_StringHash = new_table;
     char_hash_size = newsize;
     char_hash_mask = newmask;
@@ -3485,8 +3474,6 @@ static void R_StringHash_resize(unsigned int newsize)
    a new CHARSXP is created, added to the cache and then returned. */
 
 
-/* Because allocCharsxp allocates len+1 bytes and zeros the last,
-   this will always zero-terminate */
 SEXP mkCharLenCE(const char *name, int len, cetype_t enc)
 {
     SEXP cval, chain;
@@ -3542,9 +3529,7 @@ SEXP mkCharLenCE(const char *name, int len, cetype_t enc)
     chain = VECTOR_ELT(R_StringHash, hashcode);
     for (; !ISNULL(chain) ; chain = CXTAIL(chain)) {
 	SEXP val = CXHEAD(chain);
-#ifdef USE_ATTRIB_FIELD_FOR_CHARSXP_CACHE_CHAINS
 	if (TYPEOF(val) != CHARSXP) break; /* sanity check */
-#endif
 	if (need_enc == (ENC_KNOWN(val) | IS_BYTES(val)) &&
 	    LENGTH(val) == len &&  /* quick pretest */
 	    memcmp(CHAR(val), name, len) == 0) {
@@ -3577,17 +3562,14 @@ SEXP mkCharLenCE(const char *name, int len, cetype_t enc)
 	chain = VECTOR_ELT(R_StringHash, hashcode);
 	if (ISNULL(chain))
 	    SET_HASHPRI(R_StringHash, HASHPRI(R_StringHash) + 1);
-#ifdef USE_ATTRIB_FIELD_FOR_CHARSXP_CACHE_CHAINS
 	/* this is a destrictive modification */
 	chain = SET_CXTAIL(cval, chain);
 	SET_VECTOR_ELT(R_StringHash, hashcode, chain);
-#else
-	SET_VECTOR_ELT(R_StringHash, hashcode, CONS(cval, chain));
-#endif
 
 	/* resize the hash table if necessary with the new entry still
 	   protected.
 	   Maximum possible power of two is 2^30 for a VECSXP.
+	   FIXME: this has changed with long vectors.
 	*/
 	if (R_HashSizeCheck(R_StringHash)
 	    && char_hash_size < 1073741824 /* 2^30 */)

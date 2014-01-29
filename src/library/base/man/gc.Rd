@@ -6,7 +6,7 @@
 \name{gc}
 \title{Garbage Collection}
 \usage{
-gc(verbose = getOption("verbose"), reset=FALSE)
+gc(verbose = getOption("verbose"), reset = FALSE)
 gcinfo(verbose)
 }
 \alias{gc}
@@ -20,8 +20,8 @@ gcinfo(verbose)
 \description{
   A call of \code{gc} causes a garbage collection to take place.
   \code{gcinfo} sets a flag so that
-  automatic collection is either silent (\code{verbose=FALSE}) or
-  prints memory usage statistics (\code{verbose=TRUE}).
+  automatic collection is either silent (\code{verbose = FALSE}) or
+  prints memory usage statistics (\code{verbose = TRUE}).
 }
 \details{
   A call of \code{gc} causes a garbage collection to take place.
@@ -60,8 +60,8 @@ gcinfo(verbose)
   \code{NA} denoting no limit).
 
   The final two columns show the maximum space used since the last call
-  to \code{gc(reset=TRUE)} (or since \R started).
-  
+  to \code{gc(reset = TRUE)} (or since \R started).
+
   \code{gcinfo} returns the previous value of the flag.
 }
 \seealso{
@@ -69,18 +69,18 @@ gcinfo(verbose)
 
   \code{\link{Memory}} on \R's memory management,
   and \code{\link{gctorture}} if you are an \R developer.
- 
+
   \code{\link{reg.finalizer}} for actions to happen at garbage
   collection.
 }
 \examples{\donttest{
 gc() #- do it now
 gcinfo(TRUE) #-- in the future, show when R does it
-x <- integer(100000); for(i in 1:18) x <- c(x,i)
-gcinfo(verbose = FALSE)#-- don't show it anymore
+x <- integer(100000); for(i in 1:18) x <- c(x, i)
+gcinfo(verbose = FALSE) #-- don't show it anymore
 
 gc(TRUE)
 
-gc(reset=TRUE)
+gc(reset = TRUE)
 }}
 \keyword{environment}

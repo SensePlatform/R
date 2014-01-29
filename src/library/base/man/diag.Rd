@@ -44,7 +44,7 @@ diag(x) <- value
 
   The replacement form sets the diagonal of the matrix \code{x} to the
   given value(s).
-  
+
   In all other cases the value is a diagonal matrix with \code{nrow}
   rows and \code{ncol} columns (if \code{ncol} is not given the matrix
   is square).  Here \code{nrow} is taken from the argument if specified,
@@ -74,13 +74,13 @@ diag(x) <- value
 \examples{
 require(stats)
 dim(diag(3))
-diag(10,3,4) # guess what?
+diag(10, 3, 4) # guess what?
 all(diag(1:3) == {m <- matrix(0,3,3); diag(m) <- 1:3; m})
 
 diag(var(M <- cbind(X = 1:5, Y = stats::rnorm(5))))
 #-> vector with names "X" and "Y"
 
-rownames(M) <- c(colnames(M),rep("",3));
+rownames(M) <- c(colnames(M), rep("", 3));
 M; diag(M) #  named as well
 }
 \keyword{array}

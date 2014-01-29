@@ -41,7 +41,7 @@ browseEnv(envir = .GlobalEnv, pattern,
 
 \details{
   Very experimental code: displays a static HTML page on all platforms
-  except \command{R.app} on Mac OS X.
+  except \command{R.app} on OS X.
 
   Only allows one level of recursion into object structures.
 
@@ -57,7 +57,7 @@ if(interactive()) {
    ## create some interesting objects :
    ofa <- ordered(4:1)
    ex1 <- expression(1+ 0:9)
-   ex3 <- expression(u,v, 1+ 0:9)
+   ex3 <- expression(u, v, 1+ 0:9)
    example(factor, echo = FALSE)
    example(table, echo = FALSE)
    example(ftable, echo = FALSE)

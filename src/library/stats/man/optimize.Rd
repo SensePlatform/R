@@ -39,7 +39,7 @@ optimise(f = , interval = ,  \dots, lower = min(interval),
 }
 \details{
   Note that arguments after \code{\dots} must be matched exactly.
-  
+
   The method used is a combination of golden section search and
   successive parabolic interpolation, and was designed for use with
   continuous functions.  Convergence is never much slower
@@ -72,10 +72,9 @@ optimise(f = , interval = ,  \dots, lower = min(interval),
 
   \code{f} will be called as \code{f(\var{x}, ...)} for a numeric value
   of \var{x}.
-}
-\note{
-  The argument passed to \code{f} has special semantics and is shared
-  between calls.  The function should not copy it.
+
+  The argument passed to \code{f} has special semantics and used to be
+  shared between calls.  The function should not copy it.
 }
 \value{
   A list with components \code{minimum} (or \code{maximum})
@@ -98,19 +97,19 @@ optimise(f = , interval = ,  \dots, lower = min(interval),
 \examples{
 require(graphics)
 
-f <- function (x,a) (x-a)^2
+f <- function (x, a) (x - a)^2
 xmin <- optimize(f, c(0, 1), tol = 0.0001, a = 1/3)
 xmin
 
 ## See where the function is evaluated:
-optimize(function(x) x^2*(print(x)-1), lower=0, upper=10)
+optimize(function(x) x^2*(print(x)-1), lower = 0, upper = 10)
 
 ## "wrong" solution with unlucky interval and piecewise constant f():
 f  <- function(x) ifelse(x > -1, ifelse(x < 4, exp(-1/abs(x - 1)), 10), 10)
 fp <- function(x) { print(x); f(x) }
 
 plot(f, -2,5, ylim = 0:1, col = 2)
-optimize(fp, c(-4, 20))# doesn't see the minimum
-optimize(fp, c(-7, 20))# ok
+optimize(fp, c(-4, 20))   # doesn't see the minimum
+optimize(fp, c(-7, 20))   # ok
 }
 \keyword{optimize}

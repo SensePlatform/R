@@ -34,7 +34,7 @@ function(formula, data = list(),
     m <- match.call(expand.dots = FALSE)
     m <- m[c(1L, match(c("formula", "data", "subset"), names(m), 0L))]
     require(stats, quietly=TRUE)
-    m[[1L]] <- as.name("model.frame")
+    m[[1L]] <- quote(stats::model.frame)
     mf <- eval.parent(m)
     if(NCOL(mf) != 2L)
         stop("'formula' should specify exactly two variables")
@@ -68,7 +68,7 @@ function(x, y,
     if(is.null(xlab)) xlab <- deparse(substitute(x))
     if(is.null(ylab)) ylab <- deparse(substitute(y))
     if(is.null(col)) col <- gray.colors(length(levels(y)))
-    col <- rep(col, length.out = length(levels(y)))
+    col <- rep_len(col, length.out = length(levels(y)))
     if(is.null(yaxlabels)) yaxlabels <- levels(y)
 
     ## coerce x and check y

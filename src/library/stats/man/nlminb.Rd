@@ -8,6 +8,8 @@
 \title{Optimization using PORT routines }
 \description{
   Unconstrained and box-constrained optimization using PORT routines.
+
+  For historical compatibility.
 }
 \usage{
 nlminb(start, objective, gradient = NULL, hessian = NULL, \dots,
@@ -51,11 +53,11 @@ nlminb(start, objective, gradient = NULL, hessian = NULL, \dots,
 
   The PORT documentation is at
   \url{http://netlib.bell-labs.com/cm/cs/cstr/153.pdf}.
-  
+
   The parameter vector passed to \code{objective}, \code{gradient} and
   \code{hessian} has special semantics and is shared between calls.  The
   functions should not copy it.
-  
+
   If any of the functions returns \code{NA} or \code{NaN} the internal code
   could infinite-loop in \R prior to 2.15.2: this is now an error for
   the gradient and Hessian, and such values for function evaluation are
@@ -87,7 +89,7 @@ nlminb(start, objective, gradient = NULL, hessian = NULL, \dots,
     \item{\code{trace}}{The value of the objective function and the parameters
       is printed every trace'th iteration.  Defaults to 0 which
       indicates no trace information is to be printed.}
-    \item{\code{abs.tol}}{Absolute tolerance.  As from \R{} 2.12.0, defaults
+    \item{\code{abs.tol}}{Absolute tolerance.  Defaults
       to 0 so the absolute convergence test is not used.  If the objective
       function is known to be non-negative, the previous default of
       \code{1e-20} would be more appropriate.}% AFCTOL  31
@@ -112,7 +114,7 @@ nlminb(start, objective, gradient = NULL, hessian = NULL, \dots,
   Underlying Fortran code by David M. Gay
 }
 \seealso{
-  \code{\link{optim}} and \code{\link{nlm}}.
+  \code{\link{optim}} (which is preferred) and \code{\link{nlm}}.
 
   \code{\link{optimize}} for one-dimensional minimization and
   \code{\link{constrOptim}} for constrained optimization.
@@ -136,11 +138,11 @@ nlminb(start = x0, sumsq, y = y)
 y <- c( 0, 2, 0, -2, 0)
 nlminb(start = x0, sumsq, lower = -1, upper = 1, y = y)
 # try using the gradient
-sumsq.g <- function(x,y) 2*(x-y)
+sumsq.g <- function(x, y) 2*(x-y)
 nlminb(start = x0, sumsq, sumsq.g,
        lower = -1, upper = 1, y = y)
 # now use the hessian, too
-sumsq.h <- function(x,y) diag(2, nrow = length(x))
+sumsq.h <- function(x, y) diag(2, nrow = length(x))
 nlminb(start = x0, sumsq, sumsq.g, sumsq.h,
        lower = -1, upper = 1, y = y)
 
@@ -165,11 +167,9 @@ flb <- function(x)
     { p <- length(x); sum(c(1, rep(4, p-1)) * (x - c(1, x[-p])^2)^2) }
 ## 25-dimensional box constrained
 ## par[24] is *not* at boundary
-nlminb(rep(3, 25), flb,
-          lower=rep(2, 25),
-          upper=rep(4, 25))
+nlminb(rep(3, 25), flb, lower = rep(2, 25), upper = rep(4, 25))
 ## trying to use a too small tolerance:
-r <- nlminb(rep(3, 25), flb, control = list(rel.tol=1e-16))
+r <- nlminb(rep(3, 25), flb, control = list(rel.tol = 1e-16))
 stopifnot(grepl("rel.tol", r$message))
 }}
 \keyword{optimize}

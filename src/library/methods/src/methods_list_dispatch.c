@@ -1,6 +1,6 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
- *  Copyright (C) 2001-2009   The R Core Team.
+ *  Copyright (C) 2001-2013   The R Core Team.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,8 @@
 
 #include "RSMethods.h"
 #include "methods.h"
-#include "Rdefines.h"
+#include <Rinternals.h>
+#define STRING_VALUE(x)		CHAR(asChar(x))
 
 #if !defined(snprintf) && defined(HAVE_DECL_SNPRINTF) && !HAVE_DECL_SNPRINTF
 extern int snprintf (char *s, size_t n, const char *format, ...);
@@ -355,9 +356,9 @@ static SEXP R_S_MethodsListSelect(SEXP fname, SEXP ev, SEXP mlist, SEXP f_env)
     }
     val = R_tryEvalSilent(e, Methods_Namespace, &check_err);
     if(check_err)
-	error(_("S language method selection got an error when called from internal dispatch for function '%s'"),
+	error("S language method selection got an error when called from internal dispatch for function '%s'",
 	      check_symbol_or_string(fname, TRUE,
-				  "Function name for method selection called internally"));
+				     "Function name for method selection called internally"));
     UNPROTECT(1);
     return val;
 }
@@ -433,7 +434,7 @@ SEXP R_getGeneric(SEXP name, SEXP mustFind, SEXP env, SEXP package)
 		error(_("no generic function definition found for '%s'"),
 		  CHAR(asChar(name)));
 	    else
-		error(_("No generic function definition found for '%s' in the supplied environment"),
+		error(_("no generic function definition found for '%s' in the supplied environment"),
 		  CHAR(asChar(name)));
 	}
 	value = R_NilValue;
@@ -658,7 +659,7 @@ SEXP R_nextMethodCall(SEXP matched_call, SEXP ev)
     */
     op = findVarInFrame3(ev, R_dot_nextMethod, TRUE);
     if(op == R_UnboundValue)
-	error(_("internal error in 'callNextMethod': '.nextMethod' was not assigned in the frame of the method call"));
+	error("internal error in 'callNextMethod': '.nextMethod' was not assigned in the frame of the method call");
     /* If "..." is an argument, need to pass it down to next method;
      * (this was motivated by issues with match.call; are these still
      * valid in rev. 2.12 ? )*/
@@ -771,6 +772,7 @@ static SEXP R_selectByPackage(SEXP table, SEXP classes, int nargs) {
 	lwidth += strlen(STRING_VALUE(thisPkg)) + 1;
     }	
     /* make the label */
+    const void *vmax = vmaxget();
     buf = (char *) R_alloc(lwidth + 1, sizeof(char));
     bufptr = buf;
     for(i = 0; i<nargs; i++) {
@@ -785,7 +787,9 @@ static SEXP R_selectByPackage(SEXP table, SEXP classes, int nargs) {
     }
     /* look up the method by package -- if R_unboundValue, will go on
      to do inherited calculation */
-    return findVarInFrame(table, install(buf));
+    SEXP sym = install(buf);
+    vmaxset(vmax);
+    return findVarInFrame(table, sym);
 }
 
 static const char *
@@ -873,7 +877,7 @@ SEXP R_getClassFromCache(SEXP class, SEXP table)
 	    return value;
     }
     else if(TYPEOF(class) != S4SXP) {
-	error(_("Class should be either a character-string name or a class definition"));
+	error(_("class should be either a character-string name or a class definition"));
 	return R_NilValue; /* NOT REACHED */
     } else /* assumes a class def, but might check */
 	return class;
@@ -952,13 +956,13 @@ SEXP R_dispatchGeneric(SEXP fname, SEXP ev, SEXP fdef)
     case SPECIALSXP: case BUILTINSXP:
 	PROTECT(fdef = R_primitive_generic(fdef)); nprotect++;
 	if(TYPEOF(fdef) != CLOSXP) {
-	    error(_("Failed to get the generic for the primitive \"%s\""), CHAR(asChar(fname)));
+	    error(_("failed to get the generic for the primitive \"%s\""), CHAR(asChar(fname)));
 	    return R_NilValue;
 	}
 	f_env = CLOENV(fdef);
 	break;
     default:
-	error(_("Expected a generic function or a primitive for dispatch, got an object of class \"%s\""),
+	error(_("expected a generic function or a primitive for dispatch, got an object of class \"%s\""),
 	      class_string(fdef));
     }
     PROTECT(mtable = findVarInFrame(f_env, R_allmtable)); nprotect++;
@@ -970,9 +974,9 @@ SEXP R_dispatchGeneric(SEXP fname, SEXP ev, SEXP fdef)
     PROTECT(siglength = findVarInFrame(f_env, R_siglength)); nprotect++;
     if(sigargs == R_UnboundValue || siglength == R_UnboundValue ||
        mtable == R_UnboundValue)
-	error(_("Generic \"%s\" seems not to have been initialized for table dispatch---need to have .SigArgs and .AllMtable assigned in its environment"));
+	error("generic \"%s\" seems not to have been initialized for table dispatch---need to have '.SigArgs' and '.AllMtable' assigned in its environment");
     nargs = asInteger(siglength);
-    PROTECT(classes = NEW_LIST(nargs)); nprotect++;
+    PROTECT(classes = allocVector(VECSXP, nargs)); nprotect++;
     if (nargs > LENGTH(sigargs))
 	error("'.SigArgs' is shorter than '.SigLength' says it should be");
     for(i = 0; i < nargs; i++) {
@@ -1000,6 +1004,7 @@ SEXP R_dispatchGeneric(SEXP fname, SEXP ev, SEXP fdef)
 	lwidth += strlen(STRING_VALUE(thisClass)) + 1;
     }
     /* make the label */
+    const void *vmax = vmaxget();
     buf = (char *) R_alloc(lwidth + 1, sizeof(char));
     bufptr = buf;
     for(i = 0; i<nargs; i++) {
@@ -1011,6 +1016,7 @@ SEXP R_dispatchGeneric(SEXP fname, SEXP ev, SEXP fdef)
 	    bufptr++;
     }
     method = findVarInFrame(mtable, install(buf));
+    vmaxset(vmax);
     if(DUPLICATE_CLASS_CASE(method))
 	method = R_selectByPackage(method, classes, nargs);
     if(method == R_UnboundValue) {
@@ -1046,20 +1052,16 @@ SEXP R_dispatchGeneric(SEXP fname, SEXP ev, SEXP fdef)
 
 SEXP R_set_method_dispatch(SEXP onOff)
 {
-    Rboolean value, prev; SEXP x;
-    prev = table_dispatch_on;
-    value = LOGICAL_VALUE(onOff);
+    Rboolean prev = table_dispatch_on, value = asLogical(onOff);
     if(value == NA_LOGICAL) /*  just return previous*/
 	value = prev;
     table_dispatch_on = value;
     if(value != prev) {
 	R_set_standardGeneric_ptr(
-	    (table_dispatch_on ? R_dispatchGeneric : R_standardGeneric)
-	    , Methods_Namespace);
+	    (table_dispatch_on ? R_dispatchGeneric : R_standardGeneric),
+	    Methods_Namespace);
 	R_set_quick_method_check(
 	    (table_dispatch_on ? R_quick_dispatch : R_quick_method_check));
     }
-    x = NEW_LOGICAL(1);
-    LOGICAL_DATA(x)[0] = prev;
-    return x;
+    return ScalarLogical(prev);
 }

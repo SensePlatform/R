@@ -1,6 +1,6 @@
 % File src/library/base/man/array.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2012 R Core Team
+% Copyright 1995-2013 R Core Team
 % Distributed under GPL 2 or later
 
 \name{array}
@@ -41,7 +41,7 @@ is.array(x)
   dimensions (attribute \code{"dimnames"}).
 
   A two-dimensional array is the same thing as a \code{\link{matrix}}.
-  
+
   One-dimensional arrays often look like vectors, but may be handled
   differently by some functions: \code{\link{str}} does distinguish
   them in recent versions of \R.
@@ -53,9 +53,12 @@ is.array(x)
   The \code{"dimnames"} attribute is optional: if present it is a list
   with one component for each dimension, either \code{NULL} or a
   character vector of the length given by the element of the
-  \code{"dim"} attribute for that dimension.  
-  
+  \code{"dim"} attribute for that dimension.
+
   \code{is.array} is a \link{primitive} function.
+
+  For a list array, the \code{print} methods prints entries of length
+  not one in the form \samp{integer,7} indicating the type and length.
 }
 \value{
   \code{array} returns an array with the extents specified in \code{dim}
@@ -65,9 +68,6 @@ is.array(x)
   then the elements in \code{data} are recycled.  If \code{data} has
   length zero, \code{NA} of an appropriate type is used for atomic
   vectors (\code{0} for raw vectors) and \code{NULL} for lists.
-
-  In the deprecated case that \code{dims} has length 0, the result will
-  be a vector of length 1 and a warning will be given.
 
   Unlike \code{\link{matrix}}, \code{array} does not currently remove
   any attributes left by \code{as.vector} from a classed list
@@ -86,6 +86,9 @@ is.array(x)
 }
 \note{
   \code{is.array} is a \link{primitive} function.
+
+  \R 2.x.y allowed (although documented not to) a zero-length \code{dim}
+  argument, and returned a vector of length one.
 }
 \references{
   Becker, R. A., Chambers, J. M. and Wilks, A. R. (1988)

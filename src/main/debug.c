@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Langage for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1998-2012   The R Core Team.
+ *  Copyright (C) 1998-2013   The R Core Team.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 
 #define R_USE_SIGNALS 1
 #include <Defn.h>
+#include <Internal.h>
 
 SEXP attribute_hidden do_debug(SEXP call, SEXP op, SEXP args, SEXP rho)
 {
@@ -33,7 +34,7 @@ SEXP attribute_hidden do_debug(SEXP call, SEXP op, SEXP args, SEXP rho)
 #define find_char_fun \
     if (isValidString(CAR(args))) {				\
 	SEXP s;							\
-	PROTECT(s = install(translateChar(STRING_ELT(CAR(args), 0))));	\
+	PROTECT(s = installTrChar(STRING_ELT(CAR(args), 0)));	\
 	SETCAR(args, findFun(s, rho));				\
 	UNPROTECT(1);						\
     }
@@ -92,8 +93,11 @@ static Rboolean tracing_state = TRUE;
 #define GET_TRACE_STATE tracing_state
 #define SET_TRACE_STATE(value) tracing_state = value
 
-SEXP R_traceOnOff(SEXP onOff)
+SEXP attribute_hidden do_traceOnOff(SEXP call, SEXP op, SEXP args, SEXP rho)
 {
+    checkArity(op, args);
+    SEXP onOff = CAR(args);
+
     Rboolean prev = GET_TRACE_STATE;
     if(length(onOff) > 0) {
 	Rboolean _new = asLogical(onOff);
@@ -116,7 +120,7 @@ SEXP attribute_hidden do_tracemem(SEXP call, SEXP op, SEXP args, SEXP rho)
 {
 #ifdef R_MEMORY_PROFILING
     SEXP object;
-    char buffer[20];
+    char buffer[21];
 
     checkArity(op, args);
     check1arg(args, call, "x");
@@ -138,7 +142,7 @@ SEXP attribute_hidden do_tracemem(SEXP call, SEXP op, SEXP args, SEXP rho)
 		  _("'tracemem' is not useful for weak reference or external pointer objects"));
 
     SET_RTRACE(object, 1);
-    snprintf(buffer, 20, "<%p>", (void *) object);
+    snprintf(buffer, 21, "<%p>", (void *) object);
     return mkString(buffer);
 #else
     errorcall(call, _("R was not compiled with support for memory profiling"));
@@ -171,7 +175,7 @@ SEXP attribute_hidden do_untracemem(SEXP call, SEXP op, SEXP args, SEXP rho)
 
 
 #ifndef R_MEMORY_PROFILING
-void attribute_hidden memtrace_report(void* old, void *_new) {
+void memtrace_report(void* old, void *_new) {
     return;
 }
 #else
@@ -191,7 +195,7 @@ static void memtrace_stack_dump(void)
     Rprintf("\n");
 }
 
-void attribute_hidden memtrace_report(void * old, void * _new)
+void memtrace_report(void * old, void * _new)
 {
     if (!R_current_trace_state()) return;
     Rprintf("tracemem[%p -> %p]: ", (void *) old, _new);
@@ -204,7 +208,7 @@ SEXP attribute_hidden do_retracemem(SEXP call, SEXP op, SEXP args, SEXP rho)
 {
 #ifdef R_MEMORY_PROFILING
     SEXP object, previous, ans, ap, argList;
-    char buffer[20];
+    char buffer[21];
 
     PROTECT(ap = list2(R_NilValue, R_NilValue));
     SET_TAG(ap,  install("x"));
@@ -224,7 +228,7 @@ SEXP attribute_hidden do_retracemem(SEXP call, SEXP op, SEXP args, SEXP rho)
 	    errorcall(call, _("invalid '%s' argument"), "previous");
 
     if (RTRACE(object)) {
-	snprintf(buffer, 20, "<%p>", (void *) object);
+	snprintf(buffer, 21, "<%p>", (void *) object);
 	ans = mkString(buffer);
     } else {
 	R_Visible = 0;

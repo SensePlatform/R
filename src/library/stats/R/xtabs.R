@@ -34,7 +34,7 @@ xtabs <- function(formula = ~., data = parent.frame(), subset, sparse = FALSE,
     if (is.matrix(eval(m$data, parent.frame())))
 	m$data <- as.data.frame(data)
     m$... <- m$exclude <- m$drop.unused.levels <- m$sparse <- NULL
-    m[[1L]] <- as.name("model.frame")
+    m[[1L]] <- quote(stats::model.frame)
     mf <- eval(m, parent.frame())
     if(length(formula) == 2L) {
 	by <- mf
@@ -45,8 +45,13 @@ xtabs <- function(formula = ~., data = parent.frame(), subset, sparse = FALSE,
 	by <- mf[-i]
 	y <- mf[[i]]
     }
+    has.exclude <- !missing(exclude)
     by <- lapply(by, function(u) {
-	if(!is.factor(u)) u <- factor(u, exclude = exclude)
+        if(!is.factor(u)) u <- factor(u, exclude = exclude)
+        else if(has.exclude) # Don't drop NA from factors unless explicitly asked
+            u <- factor(as.character(u),
+                        levels = setdiff(levels(u), exclude),
+                        exclude=NULL)
 	u[ , drop = drop.unused.levels]
     })
     if(!sparse) { ## identical to stats::xtabs
@@ -68,10 +73,14 @@ xtabs <- function(formula = ~., data = parent.frame(), subset, sparse = FALSE,
 
     } else { ## sparse
 	if (length(by) != 2L)
-	    stop("xtabs(*, sparse=TRUE) applies only to two-way tables")
+	    stop(gettextf("%s applies only to two-way tables",
+                          "xtabs(*, sparse=TRUE)"),
+                 domain = NA)
         ## loadNamespace(.) is very quick, once it *is* loaded:
-	if(is.null(tryCatch(loadNamespace("Matrix"), error= function(e)NULL)))
-            stop("xtabs(*, sparse=TRUE) needs package \"Matrix\" correctly installed")
+	if(is.null(tryCatch(loadNamespace("Matrix"), error = function(e)NULL)))
+            stop(gettextf("%s needs package 'Matrix' correctly installed",
+                          "xtabs(*, sparse=TRUE)"),
+                 domain = NA)
         if(length(i.ex <- unique(unlist(lapply(by,function(f) which(is.na(f)))))))
             by <- lapply(by, `[`, -i.ex)
 	rows <- by[[1L]]

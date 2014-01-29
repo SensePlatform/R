@@ -1,6 +1,6 @@
 % File src/library/base/man/dynload.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2012 R Core Team
+% Copyright 1995-2013 R Core Team
 % Distributed under GPL 2 or later
 
 \name{dyn.load}
@@ -59,13 +59,14 @@ is.loaded(symbol, PACKAGE = "", type = "")
     default), \code{"Fortran"}, \code{"Call"} or \code{"External"}.}
 }
 \details{
+  
   The objects \code{dyn.load} loads are called \sQuote{dynamically
     loadable libraries} (abbreviated to \sQuote{DLL}) on all platforms
-  except Mac OS X, which unfortunately uses the term for a different
-  sort of sobject.  On Unix-alikes they are also called \sQuote{dynamic
+  except OS X, which uses the term for a different sort
+  of object.  On Unix-alikes they are also called \sQuote{dynamic
     shared objects} (\sQuote{DSO}), or \sQuote{shared objects} for
-  short.  (The POSIX standards use \sQuote{executable object file}, but
-  no one else does.)
+  short.  (The POSIX standards use \sQuote{executable object file},
+  but no one else does.)
 
   See \sQuote{See Also} and the \sQuote{Writing R Extensions} and
   \sQuote{R Installation and Administration} manuals for how to create
@@ -146,12 +147,14 @@ is.loaded(symbol, PACKAGE = "", type = "")
   DLL and then re-loading a DLL of the same name may or may not work: on
   Solaris it uses the first version loaded.
 
-  \code{is.loaded} checks if the symbol name is loaded and hence
-  available for use in \code{.C} or \code{.Fortran} or \code{.Call} or
-  \code{.External}.  It will succeed if any one of the four calling
-  functions would succeed in using the entry point unless \code{type} is
-  specified.  (See \code{\link{.Fortran}} for how Fortran symbols are
-  mapped.)
+  \code{is.loaded} checks if the symbol name is loaded \emph{and
+  searchable} and hence available for use as a character string value
+  for argument \code{.NAME} in \code{.C} or \code{.Fortran} or
+  \code{.Call} or \code{.External}.  It will succeed if any one of the
+  four calling functions would succeed in using the entry point unless
+  \code{type} is specified.  (See \code{\link{.Fortran}} for how Fortran
+  symbols are mapped.)  Note that symbols in base packages are not
+  searchable, and other packages can be so marked.
 }
 \note{
   \code{is.loaded} requires the name you would give to \code{.C} etc
@@ -196,9 +199,18 @@ is.loaded(symbol, PACKAGE = "", type = "")
   makes use of the Windows system call \code{SetDllDirectory} to insert
   the value of \code{DLLpath} in second place, and removes the current
   directory, for the duration of that \code{dyn.load} call.  (Note that
-  only one directory can be inserted in this way.)  On Windows 2000, the
-  second item in the search order is the current directory, and the
-  current directory is changed temporarily to implement \code{DLLpath}.
+  only one directory can be inserted in this way.)
+
+  Users have been confused by messages like
+\preformatted{
+ error: unable to load shared object
+ '.../library/rJava/libs/x64/rJava.dll':
+ LoadLibrary failure:  The specified module could not be found.
+}
+   The final line is a Windows (not \R) diagnostic: the \sQuote{module}
+   that could not be found is not \file{rJava.dll} but something else
+   Windows is looking for (here most likely Java DLLs): if you are lucky
+   there will be a dialog box with more details.
 }
 #endif
 \section{Warning}{
@@ -223,9 +235,9 @@ is.loaded(symbol, PACKAGE = "", type = "")
   \code{\link{.Call}}.
 }
 \examples{
-is.loaded("hcass2") #-> probably TRUE, as stats is loaded
+## expect all of these to be false in R >= 3.0.0.
 is.loaded("supsmu") # Fortran entry point in stats
 is.loaded("supsmu", "stats", "Fortran")
-is.loaded("PDF", type = "External")
+is.loaded("PDF", type = "External") # pdf() device in grDevices
 }
 \keyword{interface}

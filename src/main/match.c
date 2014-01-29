@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Langage for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1998-2010   The R Core Team.
+ *  Copyright (C) 1998-2012   The R Core Team.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -77,6 +77,7 @@ Rboolean psmatch(const char *f, const char *t, Rboolean exact)
 Rboolean pmatch(SEXP formal, SEXP tag, Rboolean exact)
 {
     const char *f, *t;
+    const void *vmax = vmaxget();
     switch (TYPEOF(formal)) {
     case SYMSXP:
 	f = CHAR(PRINTNAME(formal));
@@ -103,7 +104,9 @@ Rboolean pmatch(SEXP formal, SEXP tag, Rboolean exact)
     default:
 	goto fail;
     }
-    return psmatch(f, t, exact);
+    Rboolean res = psmatch(f, t, exact);
+    vmaxset(vmax);
+    return res;
  fail:
     error(_("invalid partial string match"));
     return FALSE;/* for -Wall */
@@ -374,7 +377,9 @@ SEXP attribute_hidden matchArgs(SEXP formals, SEXP supplied, SEXP call)
                 }
             }
 	    errorcall(call /* R_GlobalContext->call */,
-		      _("unused argument(s) %s"),
+		      ngettext("unused argument %s",
+			       "unused arguments %s",
+			       (unsigned long) length(unusedForError)),
 		      CHAR(STRING_ELT(deparse1line(unusedForError, 0), 0)) + 4);
                       /* '+ 4' is to remove 'list' from 'list(badTag1,...)' */
 	}

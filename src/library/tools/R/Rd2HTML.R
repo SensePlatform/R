@@ -137,7 +137,7 @@ escapeAmpersand <- function(x) gsub("&", "&amp;", x, fixed=TRUE)
 
 ## 2) With dynamic = FALSE from .convertRdfiles (with Links[2], used for
 ##    prebuilt HTML pages) and .Rdconv (no link lookup)
-##    Here generated links are of the 
+##    Here generated links are of the forms
 ##    file.html
 ##    ../../pkg/html/file.html
 ##    and missing links (those without an explicit package, and
@@ -736,7 +736,7 @@ Rd2HTML <-
     	if (length(section)) {
 	    ## There may be an initial \n, so remove that
 	    s1 <- section[[1L]][1L]
-	    if (RdTags(s1) == "TEXT" && s1 == "\n") section <- section[-1L]
+	    if (RdTags(section)[1] == "TEXT" && s1 == "\n") section <- section[-1L]
 	    writeContent(section, tag)
 	}
 	leavePara(FALSE)

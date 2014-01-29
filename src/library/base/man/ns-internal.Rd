@@ -1,6 +1,6 @@
 % File src/library/base/man/ns-internal.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2012 R Core Team
+% Copyright 1995-2013 R Core Team
 % Distributed under GPL 2 or later
 
 \name{ns-internals}
@@ -27,6 +27,7 @@
 \alias{.knownS3Generics}
 \alias{loadingNamespaceInfo}
 \alias{.getNamespace}
+\alias{..getNamespace}
 \usage{
 asNamespace(ns, base.OK = TRUE)
 getNamespaceInfo(ns, which)
@@ -34,10 +35,10 @@ importIntoEnv(impenv, impnames, expenv, expnames)
 isBaseNamespace(ns)
 isNamespace(ns)
 namespaceExport(ns, vars)
-namespaceImport(self, \dots)
-namespaceImportFrom(self, ns, vars, generics, packages)
-namespaceImportClasses(self, ns, vars)
-namespaceImportMethods(self, ns, vars)
+namespaceImport(self, \dots, from = NULL)
+namespaceImportFrom(self, ns, vars, generics, packages, from = NULL)
+namespaceImportClasses(self, ns, vars, from = NULL)
+namespaceImportMethods(self, ns, vars, from = NULL)
 packageHasNamespace(package, package.lib)
 parseNamespaceFile(package, package.lib, mustExist = TRUE)
 registerS3method(genname, class, method, envir = parent.frame())
@@ -48,6 +49,7 @@ setNamespaceInfo(ns, which, val)
 .knownS3Generics
 loadingNamespaceInfo()
 .getNamespace(name)
+..getNamespace(name, where)
 }
 
 \arguments{
@@ -78,7 +80,7 @@ loadingNamespaceInfo()
 \details{
   \code{packageHasNamespace} does not indicate if the package has a
   namespace, rather if it has a \file{NAMESPACE} file, which \code{base}
-  and many older packages do not.  But then you are not intended to be 
+  and many older packages do not.  But then you are not intended to be
   using it \dots.
 }
 

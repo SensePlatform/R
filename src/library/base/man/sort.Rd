@@ -44,7 +44,7 @@ sort.int(x, partial = NULL, na.last = NA, decreasing = FALSE,
   \code{sort} is a generic function for which methods can be written,
   and \code{sort.int} is the internal method which is compatible
   with S if only the first three arguments are used.
-  
+
   The default \code{sort} method makes use of \code{\link{order}} for
   classed objects, which in turn makes use of the generic function
   \code{\link{xtfrm}} (and can be slow unless a \code{xtfrm} method has
@@ -70,10 +70,11 @@ sort.int(x, partial = NULL, na.last = NA, decreasing = FALSE,
   substantially more efficient if \code{partial} has a handful of
   elements, and a full sort is done (a Quicksort if possible) if there
   are more than 10.)  Names are discarded for partial sorting.
-  
-  Method \code{"shell"} uses Shellsort (an \eqn{O(n^{4/3})} variant
-  from Sedgewick (1996)).  If \code{x} has names a stable sort is used,
-  so ties are not reordered.  (This only matters if names are present.)
+
+  Method \code{"shell"} uses Shellsort (an \eqn{O(n^{4/3})} variant from
+  Sedgewick (1986)).  If \code{x} has names a stable modification is
+  used, so ties are not reordered.  (This only matters if names are
+  present.)
 
   Method \code{"quick"} uses Singleton (1969)'s implementation of
   Hoare's Quicksort method and is only available when \code{x} is
@@ -84,6 +85,9 @@ sort.int(x, partial = NULL, na.last = NA, decreasing = FALSE,
   performance in the rare worst case.  (Peto's modification using a
   pseudo-random midpoint is used to make the worst case rarer.)  This is
   not a stable sort, and ties may be reordered.
+
+  Factors with less than 100,000 levels are sorted by radix sorting when
+  \code{method} is not supplied: see \code{\link{sort.list}}.
 }
 
 \value{
@@ -127,7 +131,7 @@ sort.int(x, partial = NULL, na.last = NA, decreasing = FALSE,
 }
 \seealso{
   \sQuote{\link{Comparison}} for how character strings are collated.
-  
+
   \code{\link{order}} for sorting on or reordering multiple variables.
 
   \code{\link{is.unsorted}}. \code{\link{rank}}.
@@ -140,17 +144,17 @@ x; sort(x); sort(x, partial = c(10, 15))
 median.default # shows you another example for 'partial'
 
 ## illustrate 'stable' sorting (of ties):
-sort(c(10:3,2:12), method = "sh", index.return=TRUE) # is stable
+sort(c(10:3, 2:12), method = "sh", index.return = TRUE) # is stable
 ## $x : 2  3  3  4  4  5  5  6  6  7  7  8  8  9  9 10 10 11 12
 ## $ix: 9  8 10  7 11  6 12  5 13  4 14  3 15  2 16  1 17 18 19
-sort(c(10:3,2:12), method = "qu", index.return=TRUE) # is not
+sort(c(10:3, 2:12), method = "qu", index.return = TRUE) # is not
 ## $x : 2  3  3  4  4  5  5  6  6  7  7  8  8  9  9 10 10 11 12
 ## $ix: 9 10  8  7 11  6 12  5 13  4 14  3 15 16  2 17  1 18 19
 
 x <- c(1:3, 3:5, 10)
-is.unsorted(x)                # FALSE: is sorted
-is.unsorted(x, strictly=TRUE) # TRUE : is not (and cannot be)
-                              # sorted strictly
+is.unsorted(x)                  # FALSE: is sorted
+is.unsorted(x, strictly = TRUE) # TRUE : is not (and cannot be)
+                                # sorted strictly
 \dontrun{
 ## Small speed comparison simulation:
 N <- 2000
