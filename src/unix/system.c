@@ -57,6 +57,7 @@
 #undef __SYSTEM__
 
 #include "Runix.h"
+#include "Rsense.h"
 
 attribute_hidden FILE *ifp = NULL; /* used in sys-std.c */
 
