@@ -159,7 +159,7 @@ int Rf_initialize_R(int ac, char **av)
     char *p, msg[1024], cmdlines[10000], **avv;
     structRstart rstart;
     Rstart Rp = &rstart;
-    Rboolean force_interactive = FALSE;
+    Rboolean force_interactive = Rp->R_Sense;
 
     if (num_initialized++) {
 	fprintf(stderr, "%s", "R is already initialized\n");
@@ -409,7 +409,7 @@ int Rf_initialize_R(int ac, char **av)
 	R_Interactive = useaqua;
     else
 #endif
-	R_Interactive = R_Interactive && (force_interactive || isatty(0));
+	R_Interactive = (R_Interactive || Rp->R_Sense) && (force_interactive || isatty(0) || Rp->R_Sense);
 
 #ifdef HAVE_AQUA
     /* for Aqua and non-dumb terminal use callbacks instead of connections
@@ -427,6 +427,17 @@ int Rf_initialize_R(int ac, char **av)
 #ifdef HAVE_AQUA
     }
 #endif
+
+  // If --sense is passed use Rsense.h io callbacks.
+  if (Rp->R_Sense) {
+    R_Outputfile = NULL;
+    R_Consolefile = NULL;
+    ptr_R_ReadConsole = Rsense_ReadConsole;
+    ptr_R_WriteConsoleEx = Rsense_WriteConsoleEx;
+    ptr_R_WriteConsole = NULL;
+    // Defined in Rinterface.h, duplicative but ok for now.
+    R_Sense = TRUE;
+  }
 
 
 /*

@@ -16,13 +16,16 @@
 #  A copy of the GNU General Public License is available at
 #  http://www.r-project.org/Licenses/
 
+SOURCE_START <- "SENSE_SOURCE_START_c1bjh"
+SOURCE_END <- "SENSE_SOURCE_END_c1bjh"
+
 source <-
 function(file, local = FALSE, echo = verbose, print.eval = echo,
 	 verbose = getOption("verbose"),
-	 prompt.echo = getOption("prompt"),
+	 # prompt.echo = getOption("prompt"),
 	 max.deparse.length = 150, chdir = FALSE,
          encoding = getOption("encoding"),
-         continue.echo = getOption("continue"),
+         # continue.echo = getOption("continue"),
          skip.echo = 0, keep.source = getOption("keep.source"))
 {
     envir <- if (isTRUE(local)) {
@@ -177,7 +180,7 @@ function(file, local = FALSE, echo = verbose, print.eval = echo,
 			    dep <- dep[-1L]
 			    leading <- leading - 1L
 			}
-			dep <- paste0(rep.int(c(prompt.echo, continue.echo),
+			dep <- paste0(rep.int(c("", ""),
 					      c(leading, length(dep)-leading)),
 				      dep, collapse="\n")
 			nd <- nchar(dep, "c")
@@ -197,12 +200,7 @@ function(file, local = FALSE, echo = verbose, print.eval = echo,
 		}
 	    }
 	    if (nd) {
-		do.trunc <- nd > max.deparse.length
-		dep <- substr(dep, 1L, if (do.trunc) max.deparse.length else nd)
-		cat("\n", dep, if (do.trunc)
-		    paste(if (length(grep(sd, dep)) && length(grep(oddsd, dep)))
-			  " ...\" ..." else " ....", "[TRUNCATED] "),
-		    "\n", sep = "")
+            cat(SOURCE_START, dep, SOURCE_END, sep="")
 	    }
 	}
 	if (!tail) {
