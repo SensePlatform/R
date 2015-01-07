@@ -17,6 +17,10 @@
  *  along with this program; if not, a copy is available at
  *  https://www.R-project.org/Licenses/
  */
+ 
+ /*
+  * Modified by Cloudera Inc., 6 Jan 2015.
+  */
 
 /* This header file is to provide hooks for alternative front-ends,
    e.g. GUIs such as GNOME and Cocoa.  It is only used on Unix-alikes.
@@ -58,6 +62,7 @@ extern "C" {
 
 extern Rboolean R_Interactive;	/* TRUE during interactive use*/
 extern Rboolean	R_Slave;	/* Run as a slave process */
+extern Rboolean R_Sense;  /* Run as a sense process */
 
 extern void R_RestoreGlobalEnv(void);
 extern void R_RestoreGlobalEnvFromFile(const char *, Rboolean);

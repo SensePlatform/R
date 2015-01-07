@@ -17,6 +17,11 @@
  *  https://www.R-project.org/Licenses/
  */
 
+ /*
+  * Modified by Cloudera Inc. 6 Jan 2015.
+  */
+
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -582,6 +587,9 @@ static void restore_inError(void *data)
 static void NORET
 verrorcall_dflt(SEXP call, const char *format, va_list ap)
 {
+    if (R_Sense)
+      printf("SENSE_ERROR_START_2JvPi");
+
     RCNTXT cntxt;
     char *p, *tr;
     int oldInError;
@@ -601,8 +609,9 @@ verrorcall_dflt(SEXP call, const char *format, va_list ap)
 	    R_Warnings = R_NilValue;
 	    REprintf(_("Lost warning messages\n"));
 	}
-	R_Expressions = R_Expressions_keep;
-	jump_to_top_ex(FALSE, FALSE, FALSE, FALSE, FALSE);
+    if (R_Sense)
+      printf("SENSE_ERROR_END_2JvPi");
+      jump_to_top_ex(FALSE, FALSE, FALSE, FALSE, FALSE);
     }
 
     /* set up a context to restore inError value on exit */
@@ -696,6 +705,8 @@ verrorcall_dflt(SEXP call, const char *format, va_list ap)
 	REprintf(_("In addition: "));
 	PrintWarnings();
     }
+    if (R_Sense)
+      printf("SENSE_ERROR_END_2JvPi");
 
     jump_to_top_ex(TRUE, TRUE, TRUE, TRUE, FALSE);
 
