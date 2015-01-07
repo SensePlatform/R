@@ -17,6 +17,11 @@
  *  https://www.R-project.org/Licenses/
  */
 
+ /*
+  * Modified by Cloudera Inc. 6 Jan 2015.
+  */
+
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -630,9 +635,12 @@ static void NORET
 verrorcall_dflt(SEXP call, const char *format, va_list ap)
 {
     if (allowedConstsChecks > 0) {
-	allowedConstsChecks--;
-	R_checkConstants(TRUE);
+	     allowedConstsChecks--;
+	     R_checkConstants(TRUE);
     }
+    if (R_Sense)
+      printf("SENSE_ERROR_START_2JvPi");
+
     RCNTXT cntxt;
     char *p, *tr;
     int oldInError;
@@ -652,8 +660,9 @@ verrorcall_dflt(SEXP call, const char *format, va_list ap)
 	    R_Warnings = R_NilValue;
 	    REprintf(_("Lost warning messages\n"));
 	}
-	R_Expressions = R_Expressions_keep;
-	jump_to_top_ex(FALSE, FALSE, FALSE, FALSE, FALSE);
+    if (R_Sense)
+      printf("SENSE_ERROR_END_2JvPi");
+      jump_to_top_ex(FALSE, FALSE, FALSE, FALSE, FALSE);
     }
 
     /* set up a context to restore inError value on exit */
@@ -747,6 +756,8 @@ verrorcall_dflt(SEXP call, const char *format, va_list ap)
 	REprintf(_("In addition: "));
 	PrintWarnings();
     }
+    if (R_Sense)
+      printf("SENSE_ERROR_END_2JvPi");
 
     jump_to_top_ex(TRUE, TRUE, TRUE, TRUE, FALSE);
 
@@ -1300,7 +1311,7 @@ void WarningMessage(SEXP call, R_WARNING which_warn, ...)
     }
 
 /* clang pre-3.9.0 says
-      warning: passing an object that undergoes default argument promotion to 
+      warning: passing an object that undergoes default argument promotion to
       'va_start' has undefined behavior [-Wvarargs]
 */
     va_start(ap, which_warn);
@@ -2054,7 +2065,7 @@ SEXP R_tryCatch(SEXP (*body)(void *), void *bdata,
 					      R_BaseNamespace);
 	R_PreserveObject(trycatch_callback);
     }
-    
+
     tryCatchData_t tcd = {
 	.body = body,
 	.bdata = bdata,
@@ -2078,7 +2089,7 @@ SEXP do_tryCatchHelper(SEXP call, SEXP op, SEXP args, SEXP env)
     SEXP eptr = CAR(args);
     SEXP sw = CADR(args);
     SEXP cond = CADDR(args);
-    
+
     if (TYPEOF(eptr) != EXTPTRSXP)
 	error("not an external pointer");
 

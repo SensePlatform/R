@@ -22,6 +22,10 @@
   See ../unix/system.txt for a description of some of these functions
 */
 
+/*
+ * Modified by Cloudera Inc. 6 Jan 2015.
+ */
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -148,6 +152,7 @@ void R_DefParams(Rstart Rp)
     Rp->R_Quiet = FALSE;
     Rp->R_Slave = FALSE;
     Rp->R_Interactive = TRUE;
+    Rp->R_Sense = FALSE;
     Rp->R_Verbose = FALSE;
     Rp->RestoreAction = SA_RESTORE;
     Rp->SaveAction = SA_SAVEASK;
