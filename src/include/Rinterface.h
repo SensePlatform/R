@@ -44,6 +44,7 @@ extern "C" {
 
 extern Rboolean R_Interactive;	/* TRUE during interactive use*/
 extern Rboolean	R_Slave;	/* Run as a slave process */
+extern Rboolean R_Sense;  /* Run as a sense process */
 
 extern void R_RestoreGlobalEnv(void);
 extern void R_RestoreGlobalEnvFromFile(const char *, Rboolean);
