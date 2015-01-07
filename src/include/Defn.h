@@ -18,6 +18,10 @@
  *  https://www.R-project.org/Licenses/
  */
 
+/*
+ * Modified by Cloudera Inc., 6 Jan 2015.
+ */
+
 /* Internal header, not installed */
 
 #ifndef DEFN_H_
@@ -721,6 +725,7 @@ extern0 struct RPRSTACK *R_PendingPromises INI_as(NULL); /* Pending promise stac
 LibExtern Rboolean R_Interactive INI_as(TRUE);	/* TRUE during interactive use*/
 extern0 Rboolean R_Quiet	INI_as(FALSE);	/* Be as quiet as possible */
 extern Rboolean  R_Slave	INI_as(FALSE);	/* Run as a slave process */
+extern Rboolean  R_Sense    INI_as(FALSE);  /* Run as a sense process */
 extern0 Rboolean R_Verbose	INI_as(FALSE);	/* Be verbose */
 /* extern int	R_Console; */	    /* Console active flag */
 /* IoBuffer R_ConsoleIob; : --> ./IOStuff.h */
