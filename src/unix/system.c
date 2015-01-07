@@ -159,7 +159,6 @@ int Rf_initialize_R(int ac, char **av)
     char *p, msg[1024], cmdlines[10000], **avv;
     structRstart rstart;
     Rstart Rp = &rstart;
-    Rboolean force_interactive = FALSE;
     Rboolean force_interactive = Rp->R_Sense;
 
     if (num_initialized++) {
