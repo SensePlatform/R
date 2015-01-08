@@ -409,7 +409,7 @@ int Rf_initialize_R(int ac, char **av)
 	R_Interactive = useaqua;
     else
 #endif
-	R_Interactive = R_Interactive && (force_interactive || isatty(0));
+	R_Interactive = (R_Interactive || Rp->R_Sense) && (force_interactive || isatty(0) || Rp->R_Sense);
 
 #ifdef HAVE_AQUA
     /* for Aqua and non-dumb terminal use callbacks instead of connections
