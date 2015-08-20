@@ -1,7 +1,7 @@
 #  File src/library/utils/R/edit.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2012 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -18,14 +18,15 @@
 
 check_for_XQuartz <- function()
 {
-    r_arch <- .Platform$r_arch
-    DSO <- file.path(R.home("modules"), "R_de.so")
-    out <- system2("otool", c("-L", shQuote(DSO)), stdout = TRUE)
-    ind <- grep("libX11[.][0-9]+[.]dylib", out)
-    if(length(ind)) {
-        this <- sub(" .*", "", sub("^\t", "", out[ind]))
-        if(!file.exists(this))
-            stop("X11 library is missing: install XQuartz from xquartz.macosforge.org", domain = NA)
+    if (file.exists("/usr/bin/otool")) {
+        DSO <- file.path(R.home("modules"), "R_de.so")
+        out <- system2("/usr/bin/otool", c("-L", shQuote(DSO)), stdout = TRUE)
+        ind <- grep("libX11[.][0-9]+[.]dylib", out)
+        if(length(ind)) {
+            this <- sub(" .*", "", sub("^\t", "", out[ind]))
+            if(!file.exists(this))
+                stop("X11 library is missing: install XQuartz from xquartz.macosforge.org", domain = NA)
+        }
     }
 }
 
@@ -69,7 +70,7 @@ View <- function (x, title)
     rn <- row.names(x0)
     if(any(rn != seq_along(rn))) x <- c(list(row.names = rn), x)
     if(!is.list(x) || !length(x) || !all(sapply(x, is.atomic)) ||
-       !max(sapply(x, length)))
+       !max(lengths(x)))
         stop("invalid 'x' argument")
     if (grepl("darwin", R.version$os)) check_for_XQuartz()
     invisible(.External2(C_dataviewer, x, title))
@@ -146,7 +147,7 @@ edit.data.frame <-
         ## e.g. started with 0-col data frame or NULL, and created no cols
         return (name)
     }
-    lengths <- sapply(out, length)
+    lengths <- lengths(out)
     maxlength <- max(lengths)
     if (edit.row.names) rn <- out[[1L]]
     for (i in which(lengths != maxlength))
@@ -217,7 +218,8 @@ edit.matrix <-
                 call. = FALSE, immediate. = TRUE)
 
     dn <- dimnames(name)
-    datalist <- split(name, col(name))
+    ## <FIXME split.matrix>
+    datalist <- split(c(name), col(name))
     if(!is.null(dn[[2L]])) names(datalist) <- dn[[2L]]
     else names(datalist) <- paste0("col", 1L:ncol(name))
     modes <- as.list(rep.int(mode(name), ncol(name)))
@@ -231,7 +233,7 @@ edit.matrix <-
 
     out <- .External2(C_dataentry, datalist, modes)
 
-    lengths <- sapply(out, length)
+    lengths <- lengths(out)
     maxlength <- max(lengths)
     if (edit.row.names) rn <- out[[1L]]
     for (i in which(lengths != maxlength))

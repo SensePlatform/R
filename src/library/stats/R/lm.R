@@ -1,7 +1,7 @@
 #  File src/library/stats/R/lm.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2014 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@ lm <- function (formula, data, subset, weights, na.action,
                names(mf), 0L)
     mf <- mf[c(1L, m)]
     mf$drop.unused.levels <- TRUE
+    ## need stats:: for non-standard evaluation
     mf[[1L]] <- quote(stats::model.frame)
     mf <- eval(mf, parent.frame())
     if (method == "model.frame")
@@ -534,6 +535,7 @@ model.frame.lm <- function(formula, ...)
                      "offset"), names(fcall), 0L)
         fcall <- fcall[c(1L, m)]
         fcall$drop.unused.levels <- TRUE
+        ## need stats:: for non-standard evaluation
         fcall[[1L]] <- quote(stats::model.frame)
         fcall$xlev <- formula$xlevels
         ## We want to copy over attributes here, especially predvars.
@@ -582,7 +584,7 @@ anova.lm <- function(object, ...)
         nmeffects <- c("(Intercept)", attr(object$terms, "term.labels"))
         tlabels <- nmeffects[1 + unique(asgn)]
         ss <- c(unlist(lapply(split(comp^2,asgn), sum)), ssr)
-        df <- c(unlist(lapply(split(asgn,  asgn), length)), dfr)
+        df <- c(lengths(split(asgn,  asgn)), dfr)
     } else {
         ss <- ssr
         df <- dfr

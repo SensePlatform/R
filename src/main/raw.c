@@ -1,6 +1,6 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
- *  Copyright (C) 2001--2012 The R Core Team
+ *  Copyright (C) 2001--2015 The R Core Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Pulic License as published by
@@ -123,7 +123,7 @@ SEXP attribute_hidden do_intToBits(SEXP call, SEXP op, SEXP args, SEXP env)
     SEXP ans, x;
     R_xlen_t i, j = 0;
     unsigned int tmp;
-    
+
     PROTECT(x = coerceVector(CAR(args), INTSXP));
     if (!isInteger(x))
 	error(_("argument 'x' must be an integer vector"));
@@ -147,7 +147,7 @@ SEXP attribute_hidden do_packBits(SEXP call, SEXP op, SEXP args, SEXP env)
     if (TYPEOF(x) != RAWSXP && TYPEOF(x) != LGLSXP && TYPEOF(x) != INTSXP)
 	error(_("argument 'x' must be raw, integer or logical"));
     if (!isString(stype)  || LENGTH(stype) != 1)
-	error(_("argument 'type' must be a character string"));
+	error(_("argument '%s' must be a character string"), "type");
     useRaw = strcmp(CHAR(STRING_ELT(stype, 0)), "integer");
     fac = useRaw ? 8 : 32;
     if (len% fac)
@@ -265,7 +265,6 @@ SEXP attribute_hidden do_utf8ToInt(SEXP call, SEXP op, SEXP args, SEXP env)
 {
     SEXP ans, x = CAR(args);
     int tmp, used = 0; /* -Wall */
-    const char *s = CHAR(STRING_ELT(x, 0));
     R_xlen_t i, j, nc;
 
     checkArity(op, args);
@@ -274,6 +273,8 @@ SEXP attribute_hidden do_utf8ToInt(SEXP call, SEXP op, SEXP args, SEXP env)
     if (LENGTH(x) > 1)
 	warning(_("argument should be a character vector of length 1\nall but the first element will be ignored"));
     if (STRING_ELT(x, 0) == NA_STRING) return ScalarInteger(NA_INTEGER);
+    const char *s = CHAR(STRING_ELT(x, 0));
+    if (!utf8Valid(s)) return ScalarInteger(NA_INTEGER);
     nc = XLENGTH(STRING_ELT(x, 0)); /* ints will be shorter */
     int *ians = (int *) R_alloc(nc, sizeof(int));
     for (i = 0, j = 0; i < nc; i++) {

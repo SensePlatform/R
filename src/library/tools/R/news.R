@@ -1,7 +1,7 @@
 #  File src/library/tools/R/news.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 ##     ## This currently is a list of x.y lists of x.y.z lists of
 ##     ## categories list of entries.
 ##     flatten <- function(e)
-##         cbind(rep.int(names(e), sapply(e, length)),
+##         cbind(rep.int(names(e), lengths(e)),
 ##               unlist(lapply(e,
 ##                             function(s) {
 ##                                 ## Also remove leading white space and
@@ -327,13 +327,15 @@ function(f, out = "") {
     Rd2txt(f, out,
            stages = c("install", "render"),
            outputEncoding = if(l10n_info()[["UTF-8"]]) "" else "ASCII//TRANSLIT",
-           options = Rd2txt_NEWS_in_Rd_options)
+           options = Rd2txt_NEWS_in_Rd_options,
+           macros = file.path(R.home("share"), "Rd", "macros", "system.Rd"))
  }
 
 Rd2HTML_NEWS_in_Rd <-
 function(f, out, ...) {
     if (grepl("[.]rds$", f)) f <- readRDS(f)
-    Rd2HTML(f, out, stages = c("install", "render"), ...)
+    Rd2HTML(f, out, stages = c("install", "render"),
+           macros = file.path(R.home("share"), "Rd", "macros", "system.Rd"), ...)
 }
 
 Rd2pdf_NEWS_in_Rd <-
@@ -342,14 +344,15 @@ function(f, pdf_file)
     if (grepl("[.]rds$", f)) f <- readRDS(f)
     f2 <- tempfile()
     ## See the comments in ?texi2dvi about spaces in paths
-    f3 <- if(grepl(" ", td <- Sys.getenv("TMPDIR")))
+    f3 <- if(grepl(" ", Sys.getenv("TMPDIR")))
         file.path("/tmp", "NEWS.tex")
     else
         file.path(tempdir(), "NEWS.tex")
     out <- file(f3, "w")
     Rd2latex(f, f2,
              stages = c("install", "render"),
-             outputEncoding = "UTF-8", writeEncoding = FALSE)
+             outputEncoding = "UTF-8", writeEncoding = FALSE,
+             macros = file.path(R.home("share"), "Rd", "macros", "system.Rd"))
     cat("\\documentclass[", Sys.getenv("R_PAPERSIZE"), "paper]{book}\n",
         "\\usepackage[ae,hyper]{Rd}\n",
         "\\usepackage[utf8]{inputenc}\n",
@@ -511,13 +514,6 @@ function(file, out = stdout(), codify = FALSE)
     }
 }
 
-Rd_expr_PR <-
-function(x)
-{
-    baseurl <- "https://bugs.R-project.org/bugzilla3/show_bug.cgi?id"
-    sprintf("\\href{%s=%s}{PR#%s}", baseurl, x, x)
-}
-
 .build_news_db_from_R_NEWS_Rd <-
 function(file = NULL)
 {
@@ -526,12 +522,13 @@ function(file = NULL)
     else {
         ## Expand \Sexpr et al now because this does not happen when using
         ## fragments.
-        prepare_Rd(parse_Rd(file), stages = "install")
+        macros <- loadRdMacros(file.path(R.home("share"), "Rd", "macros", "system.Rd"))
+        prepare_Rd(parse_Rd(file, macros = macros), stages = "install")
     }
 
     db <- .extract_news_from_Rd(x)
     db <- db[db[,1L] != "CHANGES in previous versions",,drop = FALSE]
-    
+
     ## Squeeze in an empty date column.
     .make_news_db(cbind(sub("^CHANGES IN (R )?(VERSION )?", "", db[, 1L]),
                         NA_character_,
@@ -544,28 +541,33 @@ function(file = NULL)
 .build_news_db_from_package_NEWS_Rd <-
 function(file)
 {
-    x <- prepare_Rd(parse_Rd(file), stages = "install")
+    macros <- loadRdMacros(file.path(R.home("share"), "Rd", "macros", "system.Rd"))
+    x <- prepare_Rd(parse_Rd(file, macros = macros), stages = "install")
 
     db <- .extract_news_from_Rd(x)
 
     ## Post-process section names to extract versions and dates.
     re_v <- sprintf(".*version[[:space:]]+(%s).*$",
                     .standard_regexps()$valid_package_version)
-    re_d <- sprintf("^.*(%s)[[:punct:][:space:]]*$",
-                    "[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}")
-
+    reDt <- "[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}"
+    rEnd <- "[[:punct:][:space:]]*$"
+    re_d1 <- sprintf(paste0("^.*(%s)", rEnd), reDt)
+    ## or ending with '(YYYY-MM-DD, <note>)'
+    re_d2 <- sprintf(paste0("^.*\\((%s)[[:punct:]] .*\\)", rEnd), reDt)
     nms <- db[, 1L]
     ind <- grepl(re_v, nms, ignore.case = TRUE)
     if(!all(ind))
         warning("Cannot extract version info from the following section titles:\n",
-                sprintf("  %s", unique(nms[!ind])))
+		paste(unique(nms[!ind]), collapse = "  "))
     .make_news_db(cbind(ifelse(ind,
-                               sub(re_v, "\\1", nms, ignore.case = TRUE),
-                               NA_character_),
-                        ifelse(grepl(re_d, nms, perl = TRUE),
-                               sub(re_d, "\\1", nms, perl = TRUE),
-                               NA_character_),
-                        db[, 2L],
+			       sub(re_v, "\\1", nms, ignore.case = TRUE),
+			       NA_character_),
+			ifelse(grepl(re_d1, nms, perl = TRUE),
+			       sub(re_d1, "\\1", nms, perl = TRUE),
+			       ifelse(grepl(re_d2, nms, perl = TRUE),
+				      sub(re_d2, "\\1", nms, perl = TRUE),
+				      NA_character_)),
+			db[, 2L],
                         sub("\n*$", "", db[, 3L])),
                   logical(nrow(db)),
                   "news_db_from_Rd")
@@ -574,10 +576,13 @@ function(file)
 .extract_news_from_Rd <-
 function(x)
 {
-    .get_Rd_section_names <- function(x)
+    spaces <- function(n)
+        paste(rep.int(" ", n), collapse = "")
+
+    get_section_names <- function(x)
         sapply(x, function(e) .Rd_get_text(e[[1L]]))
 
-    do_chunk <- function(x) {
+    get_item_texts <- function(x) {
         ## Currently, chunks should consist of a single \itemize list
         ## containing the news items.  Notify if there is more than one
         ## such list, and stop if there is none.
@@ -609,28 +614,28 @@ function(x)
 
         ## Try to find the column offset of the top-level bullets.
         pat <- "^( *)\036.*"
-        off <- min(nchar(sub(pat, "\\1", out[grepl(pat, out)])))
-        pat <- sprintf("^%s\036 ",
-                       paste(rep.int(" ", off), collapse = ""))
+        pos <- grep(pat, out)
+        if(!length(pos)) return(character())
+        off <- min(nchar(sub(pat, "\\1", out[pos])))
+        pat <- sprintf("^%s\036 *", spaces(off))
         s <- sub(pat, "\036", out)
         ## Try to remove some indent for nested material.
-        pat <- sprintf("^%s",
-                       paste(rep.int(" ", off + 2L), collapse = ""))
+        pat <- sprintf("^%s", spaces(off + 2L))
         s <- sub(pat, "", s)
 
         s <- paste(s, collapse = "\n")
-        s <- sub("^[[:space:]]*\036", "", s)
-        s <- sub("[[:space:]]*$", "", s)
-        ## <FIXME>
-        ## Could be more fancy and use \u2022 "if possible".
-        gsub("\036", "*", unlist(strsplit(s, "\n\036", fixed = TRUE)))
-        ## </FIXME>
+        s <- trimws(gsub("\036", "*",
+                         unlist(strsplit(s, "\n\036", fixed = TRUE))))
+        s[nzchar(s)]
     }
+
+    cbind_safely <- function(u, v)
+        cbind(rep_len(u, NROW(v)), v)
 
     y <- x[RdTags(x) == "\\section"]
     do.call(rbind,
-            Map(cbind,
-                .get_Rd_section_names(y),
+            Map(cbind_safely,
+                get_section_names(y),
                 lapply(y,
                        function(e) {
                            z <- e[[2L]]
@@ -638,13 +643,14 @@ function(x)
                            if(any(ind)) {
                                z <- z[ind]
                                do.call(rbind,
-                                       Map(cbind,
-                                           .get_Rd_section_names(z),
+                                       Map(cbind_safely,
+                                           get_section_names(z),
                                            lapply(z,
                                                   function(e)
-                                                  do_chunk(e[[2L]]))))
+                                                  get_item_texts(e[[2L]]))))
                            } else {
-                               cbind(NA_character_, do_chunk(z))
+                               cbind_safely(NA_character_,
+                                            get_item_texts(z))
                            }
                        })))
 

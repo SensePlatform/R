@@ -1,7 +1,7 @@
 #  File src/library/base/R/table.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -163,7 +163,7 @@ summary.table <- function(object, ...)
 	    m[[k]] <- apply(relFreqs, k, sum)
 	expected <- apply(do.call("expand.grid", m), 1L, prod) * n.cases
 	statistic <- sum((c(object) - expected)^2 / expected)
-	lm <- vapply(m, length, 1L)
+	lm <- lengths(m)
 	parameter <- prod(lm) - 1L - sum(lm - 1L)
 	y <- c(y, list(statistic = statistic,
 		       parameter = parameter,
@@ -221,7 +221,6 @@ as.table.default <- function(x, ...)
     if(is.table(x)) return(x)
     else if(is.array(x) || is.numeric(x)) {
 	x <- as.array(x)
-	if(any(dim(x) == 0L)) stop("cannot coerce to a table")
 	structure(class = c("table", oldClass(x)), provideDimnames(x))
     } else stop("cannot coerce to a table")
 }

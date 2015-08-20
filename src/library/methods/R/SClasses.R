@@ -1,7 +1,7 @@
 #  File src/library/methods/R/SClasses.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -230,12 +230,11 @@ makeClassRepresentation <-
 getClassDef <-
   ## Get the definition of the class supplied as a string.
   function(Class, where = topenv(parent.frame()), package = packageSlot(Class),
-           inherits = TRUE)
+           inherits = TRUE, resolve.msg = getOption("getClass.msg", default=TRUE))
 {
-    if(inherits) #includes both the lookup and Class being alread a definition
-      value <- .getClassFromCache(Class, where)
-    else # want to force a search for the metadata in this case (Why?)
-      value <- NULL
+    value <- if(inherits) #includes both the lookup and Class being already a definition
+	.getClassFromCache(Class, where, package=package, resolve.msg=resolve.msg)
+    ## else NULL # want to force a search for the metadata in this case (Why?)
     if(is.null(value)) {
 	cname <-
 	    classMetaName(if(length(Class) > 1L)
@@ -259,11 +258,12 @@ getClass <-
   ## Get the complete definition of the class supplied as a string,
   ## including all slots, etc. in classes that this class extends.
   function(Class, .Force = FALSE,
-	   where = .classEnv(Class, topenv(parent.frame()), FALSE))
+	   where = .classEnv(Class, topenv(parent.frame()), FALSE),
+           resolve.msg = getOption("getClass.msg", default=TRUE))
 {
-    value <- .getClassFromCache(Class, where) # the quick way
+    value <- .getClassFromCache(Class, where, resolve.msg=resolve.msg) # the quick way
     if(is.null(value)) {
-        value <- getClassDef(Class, where) # searches
+        value <- getClassDef(Class, where, resolve.msg=resolve.msg) # searches
         if(is.null(value)) {
             if(!.Force)
                 stop(gettextf("%s is not a defined class",
@@ -366,8 +366,8 @@ slotNames <- function(x)
 
 .slotNames <- function(x)
 {
-    classDef <-
-	getClassDef(if(is.character(x) && length(x) == 1L) x else class(x))
+    classDef <- getClassDef(
+	if(!isS4(x) && is.character(x) && length(x) == 1L) x else class(x))
     if(is.null(classDef))
 	character()
     else
@@ -375,7 +375,8 @@ slotNames <- function(x)
 }
 
 
-removeClass <-  function(Class, where = topenv(parent.frame())) {
+removeClass <-  function(Class, where = topenv(parent.frame()),
+                         resolve.msg = getOption("removeClass.msg", default=TRUE)) {
     if(missing(where)) {
        classEnv <- .classEnv(Class, where, FALSE)
         classWhere <- findClass(Class, where = classEnv)
@@ -386,7 +387,8 @@ removeClass <-  function(Class, where = topenv(parent.frame())) {
             return(FALSE)
         }
         if(length(classWhere) > 1L)
-            warning(gettextf("class %s has multiple definitions visible; only the first removed",
+	    warning(gettextf(
+		"class %s has multiple definitions visible; only the first removed",
                              dQuote(Class)),
                     domain = NA)
         classWhere <- classWhere[[1L]]
@@ -395,9 +397,9 @@ removeClass <-  function(Class, where = topenv(parent.frame())) {
     classDef <- getClassDef(Class, where=classWhere)
     if(length(classDef@subclasses)) {
       subclasses <- names(classDef@subclasses)
-      found <- sapply(subclasses, isClass, where = where)
+      found <- vapply(subclasses, isClass, NA, where = where, USE.NAMES=TRUE)
       for(what in subclasses[found])
-          .removeSuperClass(what, Class)
+          .removeSuperClass(what, Class, resolve.msg=resolve.msg)
     }
     .removeSuperclassBackRefs(Class, classDef, classWhere)
     .uncacheClass(Class, classDef)
@@ -605,7 +607,7 @@ resetClass <- function(Class, classDef, where) {
                 stop(gettextf("argument 'classDef' must be a string or a class representation; got an object of class %s",
                               dQuote(class(classDef))),
                      domain = NA)
-            package <- getPackageName(where)
+#            package <- getPackageName(where)
         }
         if(classDef@sealed)
             warning(gettextf("class %s is sealed; 'resetClass' will have no effect",
@@ -696,7 +698,7 @@ initialize <- function(.Object, ...) {
             for(i in seq_along(snames)) {
                 slotName <- el(snames, i)
                 slotClass <- elNamed(slotDefs, slotName)
-                slotClassDef <- getClassDef(slotClass, package=ClassDef@package)
+                slotClassDef <- getClassDef(slotClass, package = ClassDef@package)
                 slotVal <- el(elements, i)
                 ## perform non-strict coercion, but leave the error messages for
                 ## values not conforming to the slot definitions to validObject(),
@@ -733,13 +735,10 @@ findClass <- function(Class, where = topenv(parent.frame()), unique = "") {
     else {
         pkg <- packageSlot(Class)
         if(is.null(pkg))
-          pkg <- ""
+	    pkg <- ""
         classDef <- getClassDef(Class, where, pkg)
     }
-    if(missing(where) && nzchar(pkg))
-            where <- .requirePackage(pkg)
-    else
-        where <- as.environment(where)
+    where <- if(missing(where) && nzchar(pkg)) .requirePackage(pkg) else as.environment(where)
     what <- classMetaName(Class)
     where <- .findAll(what, where)
     if(length(where) > 1L && nzchar(pkg)) {
@@ -851,19 +850,17 @@ names(.indirectAbnormalClasses) <- .AbnormalTypes
   supers <- names(classDef@contains)
   allNeeded <- get(".NeedPrimitiveMethods", envir = .methodsNamespace)
   specials <- names(allNeeded)
-  needed <- match(specials, supers, 0) > 0
+  needed <- match(specials, supers, 0L) > 0L
   if(any(needed)) {
     generics <- unique(allNeeded[needed])
-    packages <- character()
-    for(g in generics) {
-      def <- getGeneric(g)
-      packages <- c(packages, def@package) # must be "methods" ?
-      cacheGenericsMetaData(g, def, TRUE, where, def@package)
-    }
-    if(exists(".requireCachedGenerics",  where, inherits = FALSE))
-      previous <- get(".requireCachedGenerics",  where)
-    else
-      previous <- character()
+    packages <- vapply(generics, function(g) {
+        def <- getGeneric(g)
+        pkg <- def@package # must be "methods" ?
+        cacheGenericsMetaData(g, def, TRUE, where, pkg)
+        pkg
+    }, character(1))
+    previous <- if(exists(".requireCachedGenerics", where, inherits = FALSE))
+		      get(".requireCachedGenerics", where) else character()
     packages <- c(attr(previous, "package"), packages)
     gg <- c(previous, generics)
     attr(gg, "package") <- packages
@@ -889,16 +886,9 @@ names(.indirectAbnormalClasses) <- .AbnormalTypes
   }
 
 multipleClasses <- function(details = FALSE) {
-    ctable <- .classTable
-    cnames <- objects(ctable, all.names = TRUE)
-    dups <- sapply(cnames, function(x) is.list(get(x, envir = ctable)))
-    if(details) {
-        value <- lapply(cnames[dups], function(x) get(x, envir = ctable))
-        names(value) <- cnames[dups]
-        value
-    }
-    else
-        cnames[dups]
+    classes <- as.list(.classTable, all.names=TRUE)
+    dups <- Filter(is.list, classes)
+    if(details) dups else names(dups)
 }
 
 className <- function(class, package) {

@@ -1,7 +1,7 @@
 
-R version 3.1.2 RC (2014-10-29 r66897) -- "Pumpkin Helmet"
-Copyright (C) 2014 The R Foundation for Statistical Computing
-Platform: x86_64-unknown-linux-gnu (64-bit)
+R version 3.2.2 RC (2015-08-08 r68914) -- "Fire Safety"
+Copyright (C) 2015 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -115,9 +115,9 @@ List of 2
 +     "\n\t starting with 'is.' :\t  ",
 +     sum(grepl("^is\\.", ls.base[base.is.f])), "\n", sep = "")
 
-Number of base objects:		1281
-Number of functions in base:	1239
-	 starting with 'is.' :	  49
+Number of base objects:		1306
+Number of functions in base:	1264
+	 starting with 'is.' :	  50
 
 > ## 0.14  : 31
 > ## 0.50  : 33
@@ -1510,5 +1510,5 @@ sm     3    3    3    3    4    4    4    4    2     2     2
 > par(op)
 > 
 > cat("Time elapsed: ", proc.time() - .ptime, "\n")
-Time elapsed:  1.038 0.027 1.068 0 0 
+Time elapsed:  0.999 0.014 1.013 0 0 
 > 

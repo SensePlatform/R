@@ -1,7 +1,7 @@
 #  File src/library/utils/R/packages.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2014 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -156,7 +156,7 @@ function(db)
     x <- lapply(strsplit(sub("^[[:space:]]*", "", depends),
                              "[[:space:]]*,[[:space:]]*"),
                 function(s) s[grepl("^R[[:space:]]*\\(", s)])
-    lens <- sapply(x, length)
+    lens <- lengths(x)
     pos <- which(lens > 0L)
     if(!length(pos)) return(db)
     lens <- lens[pos]
@@ -328,10 +328,15 @@ update.packages <- function(lib.loc = NULL, repos = getOption("repos"),
     if(is.null(lib.loc))
         lib.loc <- .libPaths()
 
-    if(is.null(available))
+
+    if(type == "both" && (!missing(contriburl) || !is.null(available))) {
+        stop("specifying 'contriburl' or 'available' requires a single type, not type = \"both\"")
+    }
+    if(is.null(available)) {
         available <- available.packages(contriburl = contriburl,
                                         method = method)
-
+        if (missing(repos)) repos <- getOption("repos") # May have changed
+    } 
     if(!is.matrix(oldPkgs) && is.character(oldPkgs)) {
     	subset <- oldPkgs
     	oldPkgs <- NULL
@@ -343,6 +348,7 @@ update.packages <- function(lib.loc = NULL, repos = getOption("repos"),
 	oldPkgs <- old.packages(lib.loc = lib.loc,
 				contriburl = contriburl, method = method,
 				available = available, checkBuilt = checkBuilt)
+	if (missing(repos)) repos <- getOption("repos") # May have changed
 	## prune package versions which are invisible to require()
 	if(!is.null(oldPkgs)) {
 	    pkg <- 0L
@@ -385,9 +391,14 @@ update.packages <- function(lib.loc = NULL, repos = getOption("repos"),
         ## do this a library at a time, to handle dependencies correctly.
         libs <- unique(instlib)
         for(l in libs)
-            install.packages(update[instlib == l , "Package"], l,
-                             contriburl = contriburl, method = method,
-                             available = available, ..., type = type)
+            if (type == 'both')
+                install.packages(update[instlib == l , "Package"], l,
+                                 repos = repos, method = method,
+                                 ..., type = type)
+            else
+                install.packages(update[instlib == l , "Package"], l,
+                                 contriburl = contriburl, method = method,
+                                 available = available, ..., type = type)
     }
 }
 
@@ -452,6 +463,9 @@ new.packages <- function(lib.loc = NULL, repos = getOption("repos"),
                          ..., type = getOption("pkgType"))
 {
     ask  # just a check that it is valid before we start work
+    if(type == "both" && (!missing(contriburl) || !is.null(available))) {
+        stop("specifying 'contriburl' or 'available' requires a single type, not type = \"both\"")
+    }
     if(is.null(lib.loc)) lib.loc <- .libPaths()
     if(!is.matrix(instPkgs))
         stop(gettextf("no installed packages for (invalid?) 'lib.loc=%s'",
@@ -482,9 +496,13 @@ new.packages <- function(lib.loc = NULL, repos = getOption("repos"),
         else message("no new packages are available")
     }
     if(length(update)) {
-        install.packages(update, lib = lib.loc[1L], contriburl = contriburl,
-                         method = method, available = available,
-                         type = type, ...)
+        if(type == "both")
+            install.packages(update, lib = lib.loc[1L], method = method,
+                             type = type, ...)
+        else
+            install.packages(update, lib = lib.loc[1L], contriburl = contriburl,
+                             method = method, available = available,
+                             type = type, ...)
         # Now check if they were installed and update 'res'
         dirs <- list.files(lib.loc[1L])
         updated <- update[update %in% dirs]
@@ -572,7 +590,7 @@ installed.packages <-
             enc <- sprintf("%d_%s", nchar(base), .Call(C_crc64, base))
             dest <- file.path(tempdir(), paste0("libloc_", enc, ".rds"))
             if(file.exists(dest) &&
-               file.info(dest)$mtime > file.info(lib)$mtime &&
+               file.mtime(dest) > file.mtime(lib) &&
                (val <- readRDS(dest))$base == base)
                 ## use the cache file
                 retval <- rbind(retval, val$value)
@@ -652,11 +670,12 @@ download.packages <- function(pkgs, destdir, available = NULL,
                               contriburl = contrib.url(repos, type),
                               method, type = getOption("pkgType"), ...)
 {
-    dirTest <- function(x) !is.na(isdir <- file.info(x)$isdir) & isdir
-
     nonlocalcran <- length(grep("^file:", contriburl)) < length(contriburl)
-    if(nonlocalcran && !dirTest(destdir))
+    if(nonlocalcran && !dir.exists(destdir))
         stop("'destdir' is not a directory")
+    
+    type <- resolvePkgType(type)
+    
     if(is.null(available))
         available <- available.packages(contriburl=contriburl, method=method)
 
@@ -723,10 +742,16 @@ download.packages <- function(pkgs, destdir, available = NULL,
     retval
 }
 
-contrib.url <- function(repos, type = getOption("pkgType"))
-{
+resolvePkgType <- function(type) {
     ## Not entirely clear this is optimal
     if(type == "both") type <- "source"
+    else if(type == "binary") type <- .Platform$pkgType
+    type
+}
+
+contrib.url <- function(repos, type = getOption("pkgType"))
+{
+    type <- resolvePkgType(type)
     if(is.null(repos)) return(NULL)
     if("@CRAN@" %in% repos && interactive()) {
         cat(gettext("--- Please select a CRAN mirror for use in this session ---"),
@@ -757,58 +782,89 @@ contrib.url <- function(repos, type = getOption("pkgType"))
     res
 }
 
-
-getCRANmirrors <- function(all = FALSE, local.only = FALSE)
+.getMirrors <- function(url, local.file, all, local.only)
 {
     m <- NULL
     if(!local.only) {
-        ## try to handle explicitly failure to connect to CRAN.
-        con <- url("http://cran.r-project.org/CRAN_mirrors.csv")
-        m <- try(open(con, "r"), silent = TRUE)
-        if(!inherits(m, "try-error")) m <- try(read.csv(con, as.is = TRUE))
-        close(con)
+        ## Try to handle explicitly failure to connect to CRAN.
+        f <- tempfile()
+        m <- try(download.file(url, destfile = f, quiet = TRUE))
+        if(!inherits(m, "try-error"))
+            m <- try(read.csv(f, as.is = TRUE, encoding = "UTF-8"))
+        unlink(f)
     }
     if(is.null(m) || inherits(m, "try-error"))
-        m <- read.csv(file.path(R.home("doc"), "CRAN_mirrors.csv"),
-                      as.is = TRUE)
+        m <- read.csv(local.file, as.is = TRUE, encoding = "UTF-8")
     if(!all) m <- m[as.logical(m$OK), ]
     m
 }
 
+getCRANmirrors <- function(all = FALSE, local.only = FALSE)
+{
+    .getMirrors("https://cran.r-project.org/CRAN_mirrors.csv",
+                file.path(R.home("doc"), "CRAN_mirrors.csv"),
+                all=all, local.only=local.only)
+}
 
-chooseCRANmirror <- function(graphics = getOption("menu.graphics"), ind = NULL)
+.chooseMirror <- function(m, label, graphics, ind, useHTTPS)
 {
     if(is.null(ind) && !interactive())
-        stop("cannot choose a CRAN mirror non-interactively")
+        stop("cannot choose a ", label, " mirror non-interactively")
+    if (length(ind)) 
+        res <- as.integer(ind)[1L] 
+    else {
+    	isHTTPS <- grepl("^https", m[, "URL"])
+    	mHTTPS <- m[isHTTPS,]
+    	mHTTP <- m[!isHTTPS,]
+    	if (useHTTPS) {
+    	    m <- mHTTPS
+    	    if (!nrow(m)) {
+    	    	useHTTPS <- FALSE
+    	    	m <- mHTTP
+    	    }
+    	}
+    	httpLabel <- paste("HTTP", label, "mirror")
+    	if (useHTTPS) {
+    	    httpsLabel <- paste("HTTPS", label, "mirror")
+    	    res <- menu(c(m[, 1L], "(HTTP mirrors)"), graphics, httpsLabel)
+    	    if (res > nrow(m)) {
+    	    	m <- mHTTP
+    	    	res <- menu(m[, 1L], graphics, httpLabel)
+    	    }
+    	} else {
+    	    m <- mHTTP
+    	    res <- menu(m[, 1L], graphics, httpLabel)
+    	}
+    }
+    if (res > 0L) {
+        URL <- setNames(m[res, "URL"], m[res, "Name"])
+        sub("/$", "", URL[1L])
+    } else character()
+}
+
+chooseCRANmirror <- function(graphics = getOption("menu.graphics"), ind = NULL, 
+                             useHTTPS = getOption("useHTTPS", TRUE))
+{
     m <- getCRANmirrors(all = FALSE, local.only = FALSE)
-    res <- if (length(ind)) as.integer(ind)[1L] else
-    menu(m[, 1L], graphics, "CRAN mirror")
-    if(res > 0L) {
-        URL <- m[res, "URL"]
+    url <- .chooseMirror(m, "CRAN", graphics, ind, useHTTPS)
+    if (length(url)) {
         repos <- getOption("repos")
-        repos["CRAN"] <- gsub("/$", "", URL[1L])
-        options(repos = repos)
+        repos["CRAN"] <- url
+        options(repos=repos)
     }
     invisible()
 }
 
-chooseBioCmirror <- function(graphics = getOption("menu.graphics"), ind = NULL)
+chooseBioCmirror <- function(graphics = getOption("menu.graphics"), ind = NULL,
+                             useHTTPS = getOption("useHTTPS", TRUE))
 {
-    if(is.null(ind) && !interactive())
-        stop("cannot choose a BioC mirror non-interactively")
-    m <- c("Seattle (USA)"="http://www.bioconductor.org"
-	   , "Bethesda (USA)"="http://watson.nci.nih.gov/bioc_mirror"
-	   , "Dortmund (Germany)"="http://bioconductor.statistik.tu-dortmund.de"
-	   , "Anhui (China)"="http://mirrors.ustc.edu.cn/bioc/"
-	   , "Cambridge (UK)"="http://mirrors.ebi.ac.uk/bioconductor/"
-	   , "Riken, Kobe (Japan)" = "http://bioconductor.jp/"
-	   , "Canberra (Australia)" = "http://mirror.aarnet.edu.au/pub/bioconductor/"
-	   , "Sao Paulo (Brazil)" = "http://bioconductor.fmrp.usp.br/"
-	   )
-    res <- if (length(ind)) as.integer(ind)[1L] else
-    menu(names(m), graphics, "BioC mirror")
-    if(res > 0L) options("BioC_mirror" = m[res])
-    invisible()
+    m <- .getMirrors("https://bioconductor.org/BioC_mirrors.csv",
+                     file.path(R.home("doc"), "BioC_mirrors.csv"),
+                     all=FALSE, local.only=FALSE)
+    url <- .chooseMirror(m, "BioC", graphics, ind, useHTTPS)
+    if (length(url))
+        options(BioC_mirror = url)
+    invisible()   
 }
 
 setRepositories <-
@@ -817,12 +873,10 @@ setRepositories <-
 {
     if(is.null(ind) && !interactive())
         stop("cannot set repositories non-interactively")
-    p <- file.path(Sys.getenv("HOME"), ".R", "repositories")
-    if(!file.exists(p))
-        p <- file.path(R.home("etc"), "repositories")
-    a <- tools:::.read_repositories(p)
+    a <- tools:::.get_repositories()
     pkgType <- getOption("pkgType")
-    if (pkgType == "both") pkgType <- .Platform$pkgType
+    if (pkgType == "both") pkgType <- "source" #.Platform$pkgType
+    if (pkgType == "binary") pkgType <- .Platform$pkgType
     if(length(grep("^mac\\.binary", pkgType))) pkgType <- "mac.binary"
     thisType <- a[[pkgType]]
     a <- a[thisType, 1L:3L]
@@ -1002,7 +1056,7 @@ compareVersion <- function(a, b)
     ## some of the packages may be already installed, but the
     ## dependencies apply to those being got from CRAN.
     DL <- lapply(DL, function(x) x[x %in% pkgs])
-    lens <- sapply(DL, length)
+    lens <- lengths(DL)
     if(all(lens > 0L)) {
         warning("every package depends on at least one other")
         return(pkgs)

@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1997--2013  The R Core Team
+ *  Copyright (C) 1997--2015  The R Core Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ void editorcleanall(void);                  /* from editor.c */
 int Rwin_graphicsx = -25, Rwin_graphicsy = 0;
 
 R_size_t R_max_memory = INT_MAX;
-Rboolean UseInternet2 = FALSE;
+Rboolean UseInternet2 = TRUE; // used in main/internet.c
 
 extern SA_TYPE SaveAction; /* from ../main/startup.c */
 Rboolean DebugMenuitem = FALSE;  /* exported for rui.c */
@@ -796,7 +796,7 @@ char *PrintUsage(void)
 	msg2b[] =
 	"  --max-mem-size=N      Set limit for memory to be used by R\n  --max-ppsize=N        Set max size of protect stack to N\n",
 	msg3[] =
-	"  -q, --quiet           Don't print startup message\n  --silent              Same as --quiet\n  --slave               Make R run as quietly as possible\n  --verbose             Print more information about progress\n  --internet2           Use Internet Explorer for proxies etc.\n  --args                Skip the rest of the command line\n",
+	"  -q, --quiet           Don't print startup message\n  --silent              Same as --quiet\n  --slave               Make R run as quietly as possible\n  --verbose             Print more information about progress\n  --args                Skip the rest of the command line\n",
 	msg4[] =
 	"  --ess                 Don't use getline for command-line editing\n                          and assert interactive use\n  -f file               Take input from 'file'\n  --file=file           ditto\n  -e expression         Use 'expression' as input\n\nOne or more -e options can be used, but not together with -f or --file\n",
 	msg5[] = "\nAn argument ending in .RData (in any case) is taken as the path\nto the workspace to be restored (and implies --restore)";
@@ -845,8 +845,6 @@ static int isDir(char *path)
     }
     return isdir;
 }
-
-extern void BindDomain(char *R_Home);
 
 int cmdlineoptions(int ac, char **av)
 {
@@ -960,9 +958,7 @@ int cmdlineoptions(int ac, char **av)
 
     R_common_command_line(&ac, av, Rp);
 
-    char *q = getenv("R_WIN_INTERNET2");
-    if (q && q[0]) UseInternet2 = TRUE;
-    q = getenv("R_MAX_MEM_SIZE");
+    char *q = getenv("R_MAX_MEM_SIZE");
     if (q && q[0]) {
 	value = R_Decode2Long(q, &ierr);
 	if(ierr || value < 32 * Mega || value > Virtual) {
@@ -987,7 +983,7 @@ int cmdlineoptions(int ac, char **av)
 		InThreadReadConsole = FileReadConsole;
 		setvbuf(stdout, NULL, _IONBF, 0);
 	    } else if (!strcmp(*av, "--internet2")) {
-		UseInternet2 = TRUE;
+/*		UseInternet2 = TRUE;    This is now the default */
 	    } else if (!strcmp(*av, "--mdi")) {
 		MDIset = 1;
 	    } else if (!strcmp(*av, "--sdi") || !strcmp(*av, "--no-mdi")) {

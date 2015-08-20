@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Langage for Statistical Data Analysis
  *  Copyright (C) 1998--2005  Guido Masarotto and Brian Ripley
- *  Copyright (C) 2004--2013  The R Foundation
+ *  Copyright (C) 2004--2014  The R Foundation
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -1214,23 +1214,6 @@ int RgetMDIheight(void)
     return RgetMDIsize()->bottom;
 }
 
-#if 0
-extern int  CharacterMode;
-int DialogSelectFile(char *buf, int len)
-{
-    char *fn;
-
-    setuserfilter("All files (*.*)\0*.*\0\0");
-    fn = askfilename(G_("Select file"), "");
-/*    if (!CharacterMode)
-	show(RConsole); */
-    if (fn)
-	strncpy(buf, fn, len);
-    else
-	strcpy(buf, "");
-    return (strlen(buf));
-}
-#endif
 
 static menu *usermenus;
 static char **usermenunames;

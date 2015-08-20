@@ -67,7 +67,7 @@
 /*
  *  R : A Computer Langage for Statistical Data Analysis
  *  Copyright (C) 1995, 1996, 1997  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1997--2014  The R Core Team
+ *  Copyright (C) 1997--2015  The R Core Team
  *  Copyright (C) 2009--2011  Romain Francois
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -186,7 +186,7 @@ static void setId( SEXP expr, yyltype loc){
 # define YYLTYPE yyltype
 # define YYLLOC_DEFAULT(Current, Rhs, N)				\
     do	{ 								\
-	if (YYID (N)){							\
+	if (N){								\
 	    (Current).first_line   = YYRHSLOC (Rhs, 1).first_line;	\
 	    (Current).first_column = YYRHSLOC (Rhs, 1).first_column;	\
 	    (Current).first_byte   = YYRHSLOC (Rhs, 1).first_byte;	\
@@ -213,7 +213,7 @@ static void setId( SEXP expr, yyltype loc){
 	  (Current).last_byte = (Current).first_byte - 1;		\
 	  (Current).id = NA_INTEGER;                                    \
 	} 								\
-    } while (YYID (0))
+    } while (0)
 
 		
 # define YY_LOCATION_PRINT(Loc)					\
@@ -2106,22 +2106,22 @@ yyreduce:
     {
         case 2:
 
-    { return 0; }
+    { YYACCEPT; }
     break;
 
   case 3:
 
-    { return xxvalue(NULL,2,NULL); }
+    { yyresult = xxvalue(NULL,2,NULL);	goto yyreturn; }
     break;
 
   case 4:
 
-    { return xxvalue((yyvsp[(1) - (2)]),3,&(yylsp[(1) - (2)])); }
+    { yyresult = xxvalue((yyvsp[(1) - (2)]),3,&(yylsp[(1) - (2)]));	goto yyreturn; }
     break;
 
   case 5:
 
-    { return xxvalue((yyvsp[(1) - (2)]),4,&(yylsp[(1) - (2)])); }
+    { yyresult = xxvalue((yyvsp[(1) - (2)]),4,&(yylsp[(1) - (2)]));	goto yyreturn; }
     break;
 
   case 6:
@@ -3246,7 +3246,7 @@ static SEXP xxfuncall(SEXP expr, SEXP args)
     SEXP ans, sav_expr = expr;
     if(GenerateCode) {
 	if (isString(expr))
-	    expr = install(CHAR(STRING_ELT(expr, 0)));
+	    expr = installChar(STRING_ELT(expr, 0));
 	PROTECT(expr);
 	if (length(CDR(args)) == 1 && CADR(args) == R_MissingArg && TAG(CDR(args)) == R_NilValue )
 	    ans = lang1(expr);
@@ -3731,8 +3731,10 @@ SEXP R_Parse1Buffer(IoBuffer *buffer, int gencode, ParseStatus *status)
    	    	buf[i] = (char) R_IoBufferGetc(buffer);
 
    	    buf[buflen] = 0;
-    	    defineVar(install("filename"), ScalarString(mkChar("")), ParseState.Original);
-    	    defineVar(install("lines"), ScalarString(mkChar(buf)), ParseState.Original);
+	    SEXP s_filename = install("filename");
+	    defineVar(s_filename, ScalarString(mkChar("")), ParseState.Original);
+	    SEXP s_lines = install("lines");
+	    defineVar(s_lines, ScalarString(mkChar(buf)), ParseState.Original);
     	    PROTECT(class = allocVector(STRSXP, 2));
             SET_STRING_ELT(class, 0, mkChar("srcfilecopy"));
             SET_STRING_ELT(class, 1, mkChar("srcfile"));
@@ -4225,16 +4227,6 @@ static void yyerror(const char *s)
     static char const yyunexpected[] = "syntax error, unexpected ";
     static char const yyexpecting[] = ", expecting ";
     char *expecting;
- #if 0
- /* these are just here to trigger the internationalization */
-    _("input");
-    _("end of input");
-    _("string constant");
-    _("numeric constant");
-    _("symbol");
-    _("assignment");
-    _("end of line");
-#endif
 
     R_ParseError     = yylloc.first_line;
     R_ParseErrorCol  = yylloc.first_column;
@@ -4247,9 +4239,37 @@ static void yyerror(const char *s)
 	if (expecting) *expecting = '\0';
 	for (i = 0; yytname_translations[i]; i += 2) {
 	    if (!strcmp(s + sizeof yyunexpected - 1, yytname_translations[i])) {
-		sprintf(R_ParseErrorMsg, _("unexpected %s"),
-		    i/2 < YYENGLISH ? _(yytname_translations[i+1])
-				    : yytname_translations[i+1]);
+                switch(i/2)
+                {
+                case 0:
+                        snprintf(R_ParseErrorMsg, PARSE_ERROR_SIZE, _("unexpected input"));
+                                break;
+                case 1:
+                        snprintf(R_ParseErrorMsg, PARSE_ERROR_SIZE, _("unexpected end of input"));
+                                break;
+                case 2:
+                        snprintf(R_ParseErrorMsg, PARSE_ERROR_SIZE, _("unexpected input"));
+                                break;
+                case 3:
+                        snprintf(R_ParseErrorMsg, PARSE_ERROR_SIZE, _("unexpected string constant"));
+                                break;
+                case 4:
+                        snprintf(R_ParseErrorMsg, PARSE_ERROR_SIZE, _("unexpected numeric constant"));
+                                break;
+                case 5:
+                        snprintf(R_ParseErrorMsg, PARSE_ERROR_SIZE, _("unexpected symbol"));
+                                break;
+                case 6:
+                        snprintf(R_ParseErrorMsg, PARSE_ERROR_SIZE, _("unexpected assignment"));
+                                break;
+                case 7:
+                        snprintf(R_ParseErrorMsg, PARSE_ERROR_SIZE, _("unexpected end of line"));
+                                break;
+                default:
+                  snprintf(R_ParseErrorMsg, PARSE_ERROR_SIZE, _("unexpected %s"),
+                           yytname_translations[i+1]);
+                                break;
+                }
                 
 		return;
 	    }
@@ -4661,6 +4681,8 @@ static int StringValue(int c, Rboolean forSymbol)
 		    xxungetc(c);
 		    CTEXT_POP();
 		}
+		if (!octal)
+		    error(_("nul character not allowed (line %d)"), ParseState.xxlineno);
 		c = octal;
 		oct_or_hex = TRUE;
 	    }
@@ -4682,6 +4704,8 @@ static int StringValue(int c, Rboolean forSymbol)
 		    }
 		    val = 16*val + ext;
 		}
+		if (!val)
+		    error(_("nul character not allowed (line %d)"), ParseState.xxlineno);
 		c = val;
 		oct_or_hex = TRUE;
 	    }
@@ -4717,6 +4741,8 @@ static int StringValue(int c, Rboolean forSymbol)
 			      ParseState.xxlineno);
 		    else CTEXT_PUSH(c);
 		}
+		if (!val)
+		    error(_("nul character not allowed (line %d)"), ParseState.xxlineno);
 		WTEXT_PUSH(val); /* this assumes wchar_t is Unicode */
 		use_wcs = TRUE;
 		continue;
@@ -4751,6 +4777,8 @@ static int StringValue(int c, Rboolean forSymbol)
 			error(_("invalid \\U{xxxxxxxx} sequence (line %d)"), ParseState.xxlineno);
 		    else CTEXT_PUSH(c);
 		}
+		if (!val)
+		    error(_("nul character not allowed (line %d)"), ParseState.xxlineno);		
 		WTEXT_PUSH(val);
 		use_wcs = TRUE;
 		continue;
@@ -4841,6 +4869,11 @@ static int StringValue(int c, Rboolean forSymbol)
     }
     if (!currtext_truncated)
     	strcpy(yytext, currtext);
+    else if (forSymbol || !use_wcs) {
+        size_t total = strlen(stext);
+        snprintf(yytext, MAXELTSIZE, "[%u chars quoted with '%c']", (unsigned int)total, quote);
+    } else 
+        snprintf(yytext, MAXELTSIZE, "[%d wide chars quoted with '%c']", wcnt, quote);
     if(forSymbol) {
 	PROTECT(yylval = install(stext));
 	if(stext != st0) free(stext);

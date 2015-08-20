@@ -1,9 +1,7 @@
 % File src/library/utils/man/RweaveLatex.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2013 R Core Team
+% Copyright 1995-2014 R Core Team
 % Distributed under GPL 2 or later
-
-\newcommand{\sspace}{\ifelse{latex}{\out{~}}{ }}
 
 \name{RweaveLatex}
 \alias{RweaveLatex}
@@ -137,7 +135,7 @@ RweaveLatexSetup(file, syntax, output = NULL, quiet = FALSE,
       verbatim-like \samp{Soutput} environment.  If \code{"tex"}, the
       output is taken to be already proper LaTeX markup and included as
       is.  If \code{"hide"} then all output is completely suppressed
-      (but the code executed during the weave).}
+      (but the code executed during the weave).  Values can be abbreviated.}
 
     \item{print:}{logical (\code{FALSE}).  If \code{TRUE}, this forces
       auto-printing of all expressions.}

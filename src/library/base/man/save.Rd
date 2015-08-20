@@ -1,6 +1,6 @@
 % File src/library/base/man/save.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2014 R Core Team
+% Copyright 1995-2015 R Core Team
 % Distributed under GPL 2 or later
 
 \name{save}
@@ -14,14 +14,15 @@
   (or \code{\link{data}} in some cases).
 
   \code{save.image()} is just a short-cut for \sQuote{save my current
-    workspace}, i.e., \code{save(list = ls(all = TRUE), file =
-    ".RData")}.  It is also what happens with \code{\link{q}("yes")}.
+    workspace}, i.e., \code{save(list = ls(all.names = TRUE), file =
+    ".RData", envir = .GlobalEnv)}.
+  It is also what happens with \code{\link{q}("yes")}.
 }
 \usage{
 save(\dots, list = character(),
      file = stop("'file' must be specified"),
      ascii = FALSE, version = NULL, envir = parent.frame(),
-     compress = !ascii, compression_level,
+     compress = isTRUE(!ascii), compression_level,
      eval.promises = TRUE, precheck = TRUE)
 
 save.image(file = ".RData", version = NULL, ascii = FALSE,
@@ -38,7 +39,9 @@ save.image(file = ".RData", version = NULL, ascii = FALSE,
     \code{version = 1}.}
   \item{ascii}{if \code{TRUE}, an ASCII representation of the data is
     written.  The default value of \code{ascii} is \code{FALSE} which
-    leads to a binary file being written.}
+    leads to a binary file being written.  If \code{NA} and
+    \code{version >= 2}, a different ASCII representation is used which
+    writes double/complex numbers as binary fractions.}
   \item{version}{the workspace format version to use.  \code{NULL}
     specifies the current default format.  The version used from \R
     0.99.0 to \R 1.3.1 was version 1.  The default format as from \R
@@ -80,9 +83,9 @@ save.image(file = ".RData", version = NULL, ascii = FALSE,
   are now mainly of historical interest.  They can be more compact than
   binary saves where compression is not used, but are almost always
   slower to both read and write: binary saves compress much better than
-  ASCII ones.  Further, ASCII saves may not restore double/complex
-  values exactly, and what value is restored may depend on the \R
-  platform.
+  ASCII ones.  Further, decimal ASCII saves may not restore
+  double/complex values exactly, and what value is restored may depend
+  on the \R platform.
 
   Default values for the \code{ascii}, \code{compress}, \code{safe} and
   \code{version} arguments can be modified with the
@@ -114,6 +117,26 @@ save.image(file = ".RData", version = NULL, ascii = FALSE,
   is the same as saving with compression.  Also, a saved file can be
   uncompressed and re-compressed under a different compression scheme
   (and see \code{\link{resaveRdaFiles}} for a way to do so from within \R).
+}
+
+\section{Parallel compression}{
+  That \code{file} can be a connection can be exploited to make use of
+  an external parallel compression utility such as \command{pigz}
+  (\url{http://zlib.net/pigz/}) or \command{pbzip2}
+  (\url{http://compression.ca/pbzip2/}) \emph{via} a \code{\link{pipe}}
+  connection.  For example, using 8 threads,
+\preformatted{    con <- pipe("pigz -p8 > fname.gz", "wb")
+    save(myObj, file = con); close(con)
+
+    con <- pipe("pbzip2 -p8 -9 > fname.bz2", "wb")
+    save(myObj, file = con); close(con)
+
+    con <- pipe("xz -T8 -6 -e > fname.xz", "wb")
+    save(myObj, file = con); close(con)
+}
+  where the last requires \command{xz} 5.1.1 or later built with support
+  for multiple threads (and parallel compression is only effective for
+  large objects: at level 6 it will compress in serialized chunks of 12MB).
 }
 
 \note{
@@ -152,6 +175,11 @@ save.image(file = ".RData", version = NULL, ascii = FALSE,
 
   One such \sQuote{later addition} was long vectors, introduced in \R
   3.0.0 and loadable only on 64-bit platforms.
+
+  Loading files saved with \code{ASCII = NA} requires a C99-compliant C
+  function \code{sscanf}: this is a problem on Windows, first worked
+  around in \R 3.1.2: they should be readable in earlier versions of \R
+  on all other platforms.
 }
 \seealso{
   \code{\link{dput}}, \code{\link{dump}}, \code{\link{load}},

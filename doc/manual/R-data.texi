@@ -82,7 +82,6 @@ principal authors of the packages mentioned are
 
 @quotation
 @multitable {foreign  xxxx} {A longggggggggggggggggggggggggggggggggg description}
-@item @pkg{CORBA} @tab Duncan Temple Lang
 @item @CRANpkg{DBI} @tab David A. James
 @item @CRANpkg{dataframes2xls} @tab Guido van Steen
 @item @CRANpkg{foreign} @tab Thomas Lumley, Saikat DebRoy, Douglas Bates, Duncan Murdoch and Roger Bivand
@@ -227,7 +226,7 @@ Modern Unix-alike systems, including OS X, are likely to produce
 UTF-8 files.  Windows may produce what it calls `Unicode' files
 (@code{UCS-2LE} or just possibly @code{UTF-16LE}@footnote{the
 distinction is subtle,
-@uref{http://en.wikipedia.org/@/wiki/@/UTF-16/UCS-2}, and the use of
+@uref{https://en.wikipedia.org/@/wiki/@/UTF-16/UCS-2}, and the use of
 surrogate pairs is very rare.}).  Otherwise most files will be in a
 8-bit encoding unless from a Chinese/Japanese/Korean locale (which have
 a wide range of encodings in common use).  It is not possible to
@@ -237,7 +236,7 @@ example above), so you may simply have to ask the originator for some
 clues (e.g.@: `Russian on Windows').
 
 `BOMs' (Byte Order Marks,
-@uref{http://en.wikipedia.org/wiki/Byte_order_mark}) cause problems for
+@uref{https://en.wikipedia.org/wiki/Byte_order_mark}) cause problems for
 Unicode files.  In the Unix world BOMs are rarely used, whereas in the
 Windows world they almost always are for UCS-2/UTF-16 files, and often
 are for UTF-8 files.  The @command{file} utility will not even recognize
@@ -323,7 +322,7 @@ locales the comma is used as the decimal point (set this in
 semicolon as the field separator: use @code{write.csv2} for appropriate
 defaults.  There is an IETF standard for CSV files (which mandates
 commas and CRLF line endings, for which use @code{eol = "\r\n"}), RFC4180
-(see @uref{http://tools.ietf.org/html/rfc4180}), but what is more
+(see @uref{https://tools.ietf.org/html/rfc4180}), but what is more
 important in practice is that the file is readable by the application it
 is targeted at.
 
@@ -1165,19 +1164,19 @@ from a database for separate analysis.
 
 Increasingly OSes are themselves making use of DBMSs for these reasons,
 so it is nowadays likely that one will be already installed on your
-(non-Windows) OS.  @uref{http://en.wikipedia.org/wiki/Akonadi, Akonadi}
+(non-Windows) OS.  @uref{https://en.wikipedia.org/wiki/Akonadi, Akonadi}
 is used by KDE4 to store personal information.  Several OS X
 applications, including Mail and Address Book, use SQLite.
-@c http://www.actualtechnologies.com/sqlite_applications.php
+@c https://www.actualtech.com/sqlite_applications.php
 
 @node Overview of RDBMSs, R interface packages, Why use a database?, Relational databases
 @section Overview of RDBMSs
 
 Traditionally there had been large (and expensive) commercial RDBMSs
-(@uref{http://www.informix.com, Informix}; @uref{http://www.oracle.com,
+(@uref{http://www.informix.com, Informix}; @uref{https://www.oracle.com,
 Oracle}; @uref{http://www.sybase.com, Sybase};
 @uref{http://www.ibm.com/db2, IBM's DB2};
-@uref{http://www.microsoft.com/SQL/default.mspx, Microsoft @acronym{SQL}
+@uref{https://www.microsoft.com/SQL/default.mspx, Microsoft @acronym{SQL}
 Server} on Windows) and academic and small-system databases (such as
 MySQL@footnote{and forks, notably MariaDB.}, PostgreSQL, Microsoft
 Access, @dots{}), the former marked out by much greater emphasis on data
@@ -1191,8 +1190,8 @@ There are other commonly used data sources, including spreadsheets,
 non-relational databases and even text files (possibly compressed).
 Open Database Connectivity (@acronym{ODBC}) is a standard to use all of
 these data sources.  It originated on Windows (see
-@uref{http://www.microsoft.com/data/odbc/}) but is also implemented on
-Linux/Unix/OS X.
+@uref{https://msdn.microsoft.com/@/en-us/@/library/@/ms710252%28v=vs.85%29.aspx})
+but is also implemented on Linux/Unix/OS X.
 
 All of the packages described later in this chapter provide clients to
 client/server databases.  The database can reside on the same machine or
@@ -1331,13 +1330,13 @@ data frame or in pieces (usually as groups of rows).
 
 All except @CRANpkg{RODBC} are tied to one DBMS, but there has been a
 proposal for a unified `front-end' package @CRANpkg{DBI}
-(@uref{http://developer.r-project.org/db}) in conjunction with a
+(@uref{https://developer.r-project.org/db}) in conjunction with a
 `back-end', the most developed of which is @CRANpkg{RMySQL}.  Also on
 @acronym{CRAN} are the back-ends @CRANpkg{ROracle}, @CRANpkg{RPostgreSQL} and
 @CRANpkg{RSQLite} (which works with the bundled DBMS @code{SQLite},
-@uref{http://www.sqlite.org}),  @CRANpkg{RJDBC} (which uses Java and can
+@uref{https://www.sqlite.org}),  @CRANpkg{RJDBC} (which uses Java and can
 connect to any DBMS that has a JDBC driver) and @CRANpkg{RpgSQL} (a
-specialist interface to PostgreSQL built on top of @CRANpkg{RJBDC}).
+specialist interface to PostgreSQL built on top of @CRANpkg{RJDBC}).
 
 The BioConductor project has updated @pkg{RdbiPgSQL} (formerly on
 @acronym{CRAN} ca 2000), a first-generation interface to PostgreSQL.
@@ -1347,7 +1346,7 @@ The BioConductor project has updated @pkg{RdbiPgSQL} (formerly on
 PostgreSQL.
 
 Package @CRANpkg{RMongo} provides an @R{} interface to a Java client for
-`MongoDB' (@uref{http://en.wikipedia.org/wiki/MongoDB}) databases, which
+`MongoDB' (@uref{https://en.wikipedia.org/wiki/MongoDB}) databases, which
 are queried using JavaScript rather than SQL.  Package @CRANpkg{rmongodb} is
 another client using @pkg{mongodb}'s C driver.
 
@@ -1363,8 +1362,9 @@ another client using @pkg{mongodb}'s C driver.
 @cindex MySQL database system
 
 Package @CRANpkg{RMySQL} on @acronym{CRAN} provides an interface to the
-MySQL database system (see @uref{http://www.mysql.com} and Dubois,
-2000).  The description here applies to version @code{0.5-0}: earlier
+MySQL database system (see @uref{https://www.mysql.com} and Dubois,
+2000) or its fork MariaDB (see @uref{https://mariadb.org/}).  The
+description here applies to versions @code{0.5-0} and later: earlier
 versions had a substantially different interface.  The current version
 requires the @CRANpkg{DBI} package, and this description will apply with
 minor changes to all the other back-ends to @CRANpkg{DBI}.
@@ -1478,15 +1478,16 @@ database system.
 Windows provides drivers not just for DBMSs but also for Excel
 (@file{.xls}) spreadsheets, DBase (@file{.dbf}) files and even text
 files.  (The named applications do @emph{not} need to be
-installed. Which file formats are supported depends on the the versions
-of the drivers.)  There are versions for Excel and Access 2007/2010 (go
-to @uref{http://download.microsoft.com}, and search for `Office ODBC',
-which will lead to @file{AccessDatabaseEngine.exe}), the `2007 Office
-System Driver' (the latter has a version for 64-bit Windows, and that
-will also read earlier versions).
+installed. Which file formats are supported depends on the versions of
+the drivers.)  There are versions for Excel and Access 2007/2010 (go to
+@uref{https://www.microsoft.com/@/en-us/@/download/@/default.aspx}, and
+search for `Office ODBC', which will lead to
+@file{AccessDatabaseEngine.exe}), the `2007 Office System Driver' (the
+latter has a version for 64-bit Windows, and that will also read earlier
+versions).
 
 On OS X the Actual Technologies
-(@url{http://www.actualtechnologies.com/product_access.php}) drivers
+(@url{https://www.actualtech.com/product_access.php}) drivers
 provide ODBC interfaces to Access databases (including Access 2007/2010)
 and to Excel spreadsheets (not including Excel 2007/2010).
 
@@ -1748,9 +1749,9 @@ handle binary files.
 Packages @CRANpkg{hdf5}, @CRANpkg{h5r}, Bioconductor's @pkg{rhdf5},
 @CRANpkg{RNetCDF}, @CRANpkg{ncdf} and @CRANpkg{ncdf4} on @acronym{CRAN} provide
 interfaces to @acronym{NASA}'s HDF5 (Hierarchical Data Format, see
-@uref{http://hdf.ncsa.uiuc.edu/HDF5/}) and to UCAR's netCDF data files
+@uref{https://www.hdfgroup.org/HDF5/}) and to UCAR's netCDF data files
 (network Common Data Form, see
-@uref{http://www.unidata.ucar.edu/packages/netcdf/}).
+@uref{http://www.unidata.ucar.edu/software/netcdf/}).
 
 Both of these are systems to store scientific data in array-oriented
 ways, including descriptions, labels, formats, units, @dots{}.  HDF5 also
@@ -1780,7 +1781,10 @@ equivalents Visual dBase, Visual Objects and Visual FoxPro (see
 a header and then a series of fields and so is most similar to an @R{}
 data frame.  The data itself is stored in text format, and can include
 character, logical and numeric fields, and other types in later versions
-(see @uref{http://clicketyclick.dk/docs/data_types.html}).
+(see for example
+@uref{http://www.digitalpreservation.gov/formats/fdd/fdd000325.shtml}
+and
+@uref{http://www.clicketyclick.dk/databases/xbase/format/index.html}).
 
 @findex read.dbf
 @findex write.dbf
@@ -1931,7 +1935,7 @@ available for @R{} input from that connection.
 @acronym{URL}s of types @samp{http://}, @samp{ftp://} and @samp{file://}
 can be read from using the function @code{url}.  For convenience,
 @code{file} will also accept these as the file specification and call
-@code{url}.
+@code{url}.  On most platforms @samp{https://} are also accepted.
 
 @cindex Sockets
 @findex socketConnection
@@ -2205,7 +2209,6 @@ by re-assigning them once read).
 @menu
 * Reading from sockets::        
 * Using download.file::         
-* CORBA interface::             
 @end menu
 
 Some limited facilities are available to exchange data at a lower level
@@ -2231,7 +2234,7 @@ The earlier low-level interface is given by functions @code{make.socket},
 @code{read.socket}, @code{write.socket} and @code{close.socket}.
 
 
-@node Using download.file, CORBA interface, Reading from sockets, Network interfaces
+@node Using download.file,  , Reading from sockets, Network interfaces
 @section Using @code{download.file}
 
 Function @code{download.file} is provided to read a file from a
@@ -2240,43 +2243,6 @@ avoided, as functions such as @code{read.table} and @code{scan} can read
 directly from a URL, either by explicitly using @code{url} to open a
 connection, or implicitly using it by giving a URL as the @code{file}
 argument.
-
-@node CORBA interface,  , Using download.file, Network interfaces
-@section @acronym{CORBA} interface
-@cindex CORBA
-
-@acronym{CORBA} (Common Object Request Broker Architecture) is similar
-to @acronym{DCOM}, allowing applications to call methods, or operations,
-in server objects running in other applications, potentially programmed
-in different languages and running on different machines.  There is a
-@pkg{CORBA} package available from the Omegahat project (at
-@uref{http://www.omegahat.org/RSCORBA/}), currently for Unix but a
-Windows version looks to be possible.
-
-This package allows @R{} commands to be used to locate available
-@acronym{CORBA} servers, query the methods they provide, and dynamically
-invoke methods on these objects.  @R{} values given as arguments in
-these calls are exported in the call and made available to that
-operation invocation.  Primitive data types (vectors and lists) are
-exported by default, while more complex objects are exported by
-reference.  Examples of using this include communicating with the
-Gnumeric (@uref{http://www.gnumeric.org}) spreadsheet, and also
-interacting with the data visualization system
-@uref{http://www.ggobi.org, ggobi}.
-
-One can also create @acronym{CORBA} servers within @R{}, allowing other
-applications to call these methods.  For example, one might offer access
-to a particular dataset or to some of @R{}'s modelling software.  This
-is done dynamically by combining @R{} data objects and functions.  This
-allows one to explicitly export data and functionality from @R{}.
-
-One can also use the @pkg{CORBA} package to achieve distributed,
-parallel computing in @R{}.  One @R{} session acts as a manager and
-dispatches tasks to different servers running in other @R{} worker
-sessions.  This uses the ability to invoke asynchronous or background
-CORBA calls in @R{}.  More information is available from the Omegahat
-project at @uref{http://www.omegahat.org/RSCORBA/}.
-
 
 
 @node Reading Excel spreadsheets, References, Network interfaces, Top
@@ -2303,7 +2269,7 @@ possibility.
 If you do not have Excel, many other programs are able to read such
 spreadsheets and export in a text format on both Windows and Unix, for
 example Gnumeric (@uref{http://www.gnome.org/projects/gnumeric/}) and
-OpenOffice (@uref{http://www.openoffice.org}).  You can also
+OpenOffice (@uref{https://www.openoffice.org}).  You can also
 cut-and-paste between the display of a spreadsheet in such a program and
 R: @code{read.table} will read from the R console or, under Windows,
 from the clipboard (via @code{file = "clipboard"} or
@@ -2389,11 +2355,11 @@ K.@: Kline and D.@: Kline (2001) @emph{SQL in a Nutshell.} O'Reilly.
 @noindent
 B.@: Momjian (2000) @emph{PostgreSQL: Introduction and Concepts.}
 Addison-Wesley.
-Also downloadable at @uref{http://www.postgresql.org/docs/awbook.html}.
+Also available at @uref{http://momjian.us/main/writings/pgsql/aw_pgsql_book/}.
 
 @noindent
 B.@: D.@: Ripley (2001) Connections. \@emph{R News}, @strong{1/1}, 16--7.
-  \@uref{http://www.r-project.org/doc/Rnews/Rnews_2001-1.pdf}
+  \@uref{https://www.r-project.org/doc/Rnews/Rnews_2001-1.pdf}
 
 
 @noindent

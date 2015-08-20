@@ -1,9 +1,7 @@
 % File src/library/base/man/strptime.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2014 R Core Team
+% Copyright 1995-2015 R Core Team
 % Distributed under GPL 2 or later
-
-\newcommand{\sspace}{\ifelse{latex}{\out{~}}{ }}
 
 \name{strptime}
 \alias{format.POSIXct}
@@ -42,9 +40,9 @@ strptime(x, format, tz = "")
     otherwise.  If \code{\link{options}("digits.secs")} is set, up to
     the specified number of digits will be printed for seconds.}
   \item{\dots}{Further arguments to be passed from or to other methods.}
-  \item{usetz}{logical.  Should the time zone be appended to the output?
-    This is used in printing times, and more reliable than using
-    \code{"\%Z"}.}
+  \item{usetz}{logical.  Should the time zone abbreviation be appended
+    to the output?  This is used in printing times, and more reliable
+    than using \code{"\%Z"}.}
 }
 \details{
   The \code{format} and \code{as.character} methods and \code{strftime}
@@ -76,7 +74,7 @@ strptime(x, format, tz = "")
   
   % strftime is C99: strptime is POSIX.
   The details of the formats are platform-specific, but the following are
-  defined by the POSIX standard and are likely to be widely available.
+  likely to be widely available: most are defined by the POSIX standard.
   A \emph{conversion specification} is introduced by \code{\%}, usually
   followed by a single letter or \code{O} or \code{E} and then a single
   letter.  Any character in the format string not part of a conversion
@@ -84,11 +82,13 @@ strptime(x, format, tz = "")
   \code{\%}).  Widely implemented conversion specifications include
   \describe{
     \item{\code{\%a}}{Abbreviated weekday name in the current
-      locale.  (Also matches full name on input.)}
+      locale on this platform.  (Also matches full name on input:
+      in some locales there are no abbreviations of names.)}
     \item{\code{\%A}}{Full weekday name in the current locale.  (Also
       matches abbreviated name on input.)}
-    \item{\code{\%b}}{Abbreviated month name in the current
-      locale.  (Also matches full name on input.)}
+    \item{\code{\%b}}{Abbreviated month name in the current locale on
+      this platform.  (Also matches full name on input: in
+      some locales there are no abbreviations of names.)}
     \item{\code{\%B}}{Full month name in the current locale.  (Also
       matches abbreviated name on input.)}
     \item{\code{\%c}}{Date and time.   Locale-specific on output,
@@ -125,7 +125,7 @@ strptime(x, format, tz = "")
     \item{\code{\%r}}{The 12-hour clock time (using the locale's AM or
       PM).  Only defined in some locales.}
     \item{\code{\%R}}{Equivalent to \code{\%H:\%M}.}
-    \item{\code{\%S}}{Second as decimal number (00--61), allowing for
+    \item{\code{\%S}}{Second as integer (00--61), allowing for
       up to two leap-seconds (but POSIX-compliant implementations
       will ignore leap seconds).}
     \item{\code{\%t}}{Tab on output, arbitrary whitespace on input.}
@@ -135,7 +135,7 @@ strptime(x, format, tz = "")
     \item{\code{\%U}}{Week of the year as decimal number (00--53) using
       Sunday as the first day 1 of the week (and typically with the
       first Sunday of the year as day 1 of week 1).  The US convention.}
-    \item{\code{\%V}}{Week of the year as decimal number (00--53) as
+    \item{\code{\%V}}{Week of the year as decimal number (01--53) as
       defined in ISO 8601.
       If the week (starting on Monday) containing 1 January has four or
       more days in the new year, then it is considered week 1.  Otherwise, it
@@ -165,7 +165,7 @@ strptime(x, format, tz = "")
     \item{\code{\%z}}{Signed offset in hours and minutes
       from UTC, so \code{-0800} is 8 hours behind UTC. Values up to
       \code{+1400} are accepted as from \R 3.1.1: previous versions only
-      accepted up to \code{+1200}.} 
+      accepted up to \code{+1200}.  (Standard only for output.)} 
     \item{\code{\%Z}}{(Output only.)  Time zone abbreviation as a
       character string (empty if not available).  This may not be reliable
       when a time zone has changed abbreviations over the years.}
@@ -176,9 +176,12 @@ strptime(x, format, tz = "")
   locale.  Note that abbreviated names are platform-specific (although
   the standards specify that in the \samp{C} locale they must be the
   first three letters of the capitalized English name: this convention
-  is widely used in English-language locales but for example French
-  month abbreviations are not the same on any of Linux, OS X, Solaris
-  and Windows).
+  is widely used in English-language locales but for example the French
+  month abbreviations are not the same on any two of Linux, OS X, Solaris
+  and Windows). Knowing what the abbreviations are is essential
+  if you wish to use \code{\%a}, \code{\%b} or \code{\%h} as part of an
+  input format: see the examples for how to check.
+% Unlike Dominic Comtois in non-bug PR#16301
 
   When \code{\%z} or \code{\%Z} is used for output with an
   object with an assigned time zone an attempt is made to use the values
@@ -207,8 +210,8 @@ strptime(x, format, tz = "")
   not followed by a digit, it uses the setting of
   \code{\link{getOption}("digits.secs")}, or if that is unset, \code{n =
   3}).  Further, for \code{strptime} \code{\%OS} will input seconds
-  including fractional seconds.  Note that \code{\%S} ignores (and not
-  rounds) fractional parts on output.
+  including fractional seconds.  Note that \code{\%S} does not read
+  fractional parts on output. 
 
   The behaviour of other conversion specifications (and even if other
   character sequences commencing with \code{\%} \emph{are} conversion
@@ -218,7 +221,11 @@ strptime(x, format, tz = "")
 }
 \value{
   The \code{format} methods and \code{strftime} return character vectors
-  representing the time.  \code{NA} times are returned as \code{NA_character_}.
+  representing the time.  \code{NA} times are returned as
+  \code{NA_character_}.  The elements are restricted to 256 bytes, plus
+  a time zone abbreviation if \code{usetz} is true.  (On known platforms
+  longer strings are truncated at 255 or 256 bytes, but this is not
+  guaranteed by the C99 standard.)
 
   \code{strptime} turns character representations into an object of
   class \code{"\link{POSIXlt}"}.  The time zone is used to set the
@@ -281,8 +288,11 @@ strptime(x, format, tz = "")
   For \code{strptime} the input string need not specify the date
   completely: it is assumed that unspecified seconds, minutes or hours
   are zero, and an unspecified year, month or day is the current one.
-  Some components may be returned as \code{NA} (but an unknown
-  \code{tzone} component is represented by an empty string).
+  (However, if a month is specified, the day of that month has to be
+  specified by \code{\%d} or \code{\%e} since the current day of the
+  month need not be valid for the specified month.)  Some components may
+  be returned as \code{NA} (but an unknown \code{tzone} component is
+  represented by an empty string).
 
   If the time zone specified is invalid on your system, what happens is
   system-specific but it will probably be ignored.
@@ -365,6 +375,11 @@ attr(x, "tzone")
 
 ## An RFC 822 header (Eastern Canada, during DST)
 strptime("Tue, 23 Mar 2010 14:36:38 -0400",  "\%a, \%d \%b \%Y \%H:\%M:\%S \%z")
+
+## Make sure you know what the abbreviated names are for you if you wish
+## to use them for input (they are matched case-insensitively):
+format(seq.Date(as.Date('1978-01-01'), by = 'day', len = 7), "\%a")
+format(seq.Date(as.Date('2000-01-01'), by = 'month', len = 12), "\%b")
 }}
 \keyword{utilities}
 \keyword{chron}

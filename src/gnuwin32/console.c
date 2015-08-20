@@ -3,7 +3,7 @@
  *  file console.c
  *  Copyright (C) 1998--2003  Guido Masarotto and Brian Ripley
  *  Copyright (C) 2004-8      The R Foundation
- *  Copyright (C) 2004-2013   The R Core Team
+ *  Copyright (C) 2004-2014   The R Core Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ extern void R_WaitEvent(void);
 #include "consolestructs.h"
 #include "rui.h"
 #include "getline/wc_history.h"
-#include "Startup.h" /* for UImode */
+#include "Startup.h" /* for CharacterMode */
 #include <Fileio.h>
 
 #include <stdint.h>
@@ -69,8 +69,6 @@ extern void R_WaitEvent(void);
 # undef alloca
 # define alloca(x) __builtin_alloca((x))
 #endif
-
-extern UImode  CharacterMode;
 
 static void performCompletion(control c);
 
@@ -997,11 +995,12 @@ static void performCompletion(control c)
 	consolewrites(c, buf1);
 
 	for (i = 0; i < min(alen, max_show); i++) {
+            consolewrites(c, "\n");
 	    consolewrites(c, CHAR(STRING_ELT(VECTOR_ELT(ans, POSSIBLE), i)));
-	    consolewrites(c, "\n");
 	}
 	if (alen > max_show)
-	    consolewrites(c, "\n[...truncated]\n");
+	    consolewrites(c, "\n[...truncated]");
+	consolewrites(c, "\n");
 	p->wipe_completion = 1;
     }
 

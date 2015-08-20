@@ -1,6 +1,6 @@
 % File src/library/base/man/srcfile.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2011 R Core Team
+% Copyright 1995-2014 R Core Team
 % Distributed under GPL 2 or later
 
 \name{srcfile}
@@ -41,7 +41,7 @@ srcref(srcfile, lloc)
 \method{close}{srcfile}(con, \dots)
 \method{print}{srcref}(x, useSource = TRUE, \dots)
 \method{summary}{srcref}(object, useSource = FALSE, \dots)
-\method{as.character}{srcref}(x, useSource = TRUE, \dots)
+\method{as.character}{srcref}(x, useSource = TRUE, to = x, \dots)
 .isOpen(srcfile)
 }
 \arguments{
@@ -60,6 +60,8 @@ srcref(srcfile, lloc)
   \item{x, object, con}{ An object of the appropriate class. }
   \item{useSource}{ Whether to read the \code{srcfile} to obtain the
     text of a \code{srcref}. }
+  \item{to}{ An optional second \code{srcref} object to mark the end
+    of the character range. }
   \item{\dots}{ Additional arguments to the methods; these will be ignored. }
 }
 \details{
@@ -87,11 +89,13 @@ srcref(srcfile, lloc)
   \code{srcfile}.
 
   The \code{srcref} function produces an object of class
-  \code{srcref}, which describes a range of characters in a \code{
-    srcfile}.  The \code{lloc} value gives the following values:
+  \code{srcref}, which describes a range of characters in a
+  \code{srcfile}.
+  The \code{lloc} value gives the following values:
 \preformatted{c(first_line, first_byte, last_line, last_byte, first_column,
   last_column, first_parsed, last_parsed)
-}. Bytes (elements 2, 4) and
+}
+  Bytes (elements 2, 4) and
   columns (elements 5, 6) may be different due to multibyte
   characters.  If only four values are given, the columns and bytes
   are assumed to match.  Lines (elements 1, 3) and parsed lines (
@@ -109,10 +113,13 @@ srcref(srcfile, lloc)
   Methods are defined for \code{print}, \code{summary} and
   \code{as.character} for class \code{srcref}.  The \code{as.character}
   method will read the associated source file to obtain the text
-  corresponding to the reference.  The exact behaviour depends on the
+  corresponding to the reference.  If the \code{to} argument is given,
+  it should be a second \code{srcref} that follows the first, in the
+  same file; they will be treated as one reference to the whole 
+  range.  The exact behaviour depends on the
   class of the source file.  If the source file inherits from
-  class \code{"srcfilecopy"}, the lines are taken from the saved copy
-  using the "parsed" line counts.  If not, an attempt
+  class \code{srcfilecopy}, the lines are taken from the saved copy
+  using the \dQuote{parsed} line counts.  If not, an attempt
   is made to read the file, and the original line numbers of the
   \code{srcref} record (i.e., elements 1 and 3) are used.  If an error
   occurs (e.g., the file no longer exists), text like

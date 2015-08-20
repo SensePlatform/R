@@ -1,6 +1,6 @@
 % File src/library/utils/man/RShowDoc.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2012 R Core Team
+% Copyright 1995-2014 R Core Team
 % Distributed under GPL 2 or later
 
 \name{RShowDoc}
@@ -14,7 +14,8 @@ RShowDoc(what, type = c("pdf", "html", "txt"), package)
 }
 \arguments{
   \item{what}{a character string: see \sQuote{Details}.}
-  \item{type}{an optional character string giving the preferred format.}
+  \item{type}{an optional character string giving the preferred format.
+      Can be abbreviated.}
   \item{package}{an optional character string specifying the name of a
     package within which to look for documentation.}
 }

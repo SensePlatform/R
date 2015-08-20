@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1997--2013  The R Core Team
+ *  Copyright (C) 1997--2015  The R Core Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -1247,15 +1247,14 @@ static int R_X11Err(Display *dsp, XErrorEvent *event)
     return 0;
 }
 
-static int R_X11IOErrSimple(Display *dsp)
+static int NORET R_X11IOErrSimple(Display *dsp)
 {
     char *dn = XDisplayName(dspname);
     strcpy(dspname, "");
     error(_("X11 I/O error while opening X11 connection to '%s'"), dn);
-    return 0; /* but should never get here */
 }
 
-static int R_X11IOErr(Display *dsp)
+static int NORET R_X11IOErr(Display *dsp)
 {
     int fd = ConnectionNumber(display);
     /*
@@ -1270,7 +1269,6 @@ static int R_X11IOErr(Display *dsp)
     strcpy(dspname, "");
     */
     error(_("X11 fatal IO error: please save work and shut down R"));
-    return 0; /* but should never get here */
 }
 
 #define USE_Xt 1
@@ -2600,9 +2598,12 @@ static void X11_eventHelper(pDevDesc dd, int code)
     	R_ProcessX11Events((void*)NULL);	/* discard pending events */
     	if (isEnvironment(dd->eventEnv)) {
     	    SEXP prompt = findVar(install("prompt"), dd->eventEnv);
-    	    if (length(prompt) == 1) {
+    	    if (isString(prompt) && length(prompt) == 1) {
+    		 PROTECT(prompt);
     		 XStoreName(display, xd->window, CHAR(asChar(prompt)));
-    	    }
+    		 UNPROTECT(1);
+    	    } else 
+    	    	XStoreName(display, xd->window, "");
     	}
     	XSync(display, 1);
     } else if (code == 2) {
@@ -3389,6 +3390,11 @@ static Rboolean in_R_X11readclp(Rclpconn this, char *type)
 }
 
 #include <R_ext/Rdynload.h>
+
+extern const char * in_R_pngVersion(void);
+extern const char * in_R_jpegVersion(void);
+extern const char * in_R_tiffVersion(void);
+
 void R_init_R_X11(DllInfo *info)
 {
     R_X11Routines *tmp;
@@ -3402,5 +3408,8 @@ void R_init_R_X11(DllInfo *info)
     tmp->image = in_R_GetX11Image;
     tmp->access = in_R_X11_access;
     tmp->readclp = in_R_X11readclp;
+    tmp->R_pngVersion = in_R_pngVersion;
+    tmp->R_jpegVersion = in_R_jpegVersion;
+    tmp->R_tiffVersion = in_R_tiffVersion;
     R_setX11Routines(tmp);
 }

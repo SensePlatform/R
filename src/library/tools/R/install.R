@@ -1,7 +1,7 @@
 #  File src/library/tools/R/install.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2014 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 # NB: also copyright dates in Usages.
 #
@@ -35,8 +35,6 @@
 {
     ## calls system() on Windows for
     ## sh (configure.win/cleanup.win) make zip
-
-    dir.exists <- function(x) !is.na(isdir <- file.info(x)$isdir) & isdir
 
     ## global variables
     curPkg <- character() # list of packages in current pkg
@@ -101,7 +99,8 @@
     on.exit(do_exit_on_error())
     WINDOWS <- .Platform$OS.type == "windows"
 
-    MAKE <- Sys.getenv("MAKE") # FIXME shQuote, default?
+    if (WINDOWS) MAKE <- "make"
+    else MAKE <- Sys.getenv("MAKE") # FIXME shQuote, default?
     rarch <- Sys.getenv("R_ARCH") # unix only
     if (WINDOWS && nzchar(.Platform$r_arch))
         rarch <- paste0("/", .Platform$r_arch)
@@ -182,6 +181,8 @@
             "      --configure-vars=VARS",
             "			set variables for the configure scripts (if any)",
             "      --dsym            (OS X only) generate dSYM directory",
+            "      --built-timestamp=STAMP",
+            "                   set timestamp for Built: entry in DESCRIPTION",
             "\nand on Windows only",
             "      --force-biarch	attempt to build both architectures",
             "			even if there is a non-empty configure.win",
@@ -648,13 +649,13 @@
 
 
         if (more_than_libs) {
-            for (f in c("NAMESPACE", "LICENSE", "LICENCE", "NEWS"))
+            for (f in c("NAMESPACE", "LICENSE", "LICENCE", "NEWS", "NEWS.md"))
                 if (file.exists(f)) {
                     file.copy(f, instdir, TRUE)
 		    Sys.chmod(file.path(instdir, f), fmode)
                 }
 
-            res <- try(.install_package_description('.', instdir))
+            res <- try(.install_package_description('.', instdir, built_stamp))
             if (inherits(res, "try-error"))
                 pkgerrmsg("installing package DESCRIPTION failed", pkg_name)
             if (!file.exists(namespace <- file.path(instdir, "NAMESPACE")) ) {
@@ -681,7 +682,7 @@
                 if (length(paths)) {
                     ## check any version requirements
                     have_vers <-
-                        (vapply(linkTo, length, 1L) > 1L) & lpkgs %in% bpaths
+                        (lengths(linkTo) > 1L) & lpkgs %in% bpaths
                     for (z in linkTo[have_vers]) {
                         p <- z[[1L]]
                         path <- paths[bpaths %in% p]
@@ -903,7 +904,7 @@
                                    "bzip2" = 2L,
                                    "xz" = 3L,
                                    TRUE)  # default to gzip
-                } else if(file.info(f)$size > 1e6) comp <- 3L # "xz"
+                } else if(file.size(f) > 1e6) comp <- 3L # "xz"
 		res <- try(sysdata2LazyLoadDB(f, file.path(instdir, "R"),
                                               compress = comp))
 		if (inherits(res, "try-error"))
@@ -1066,7 +1067,7 @@
             file.copy(i_files, i2_files)
             if (!WINDOWS) {
                 ## make executable if the source file was (for owner)
-                modes <- file.info(i_files)$mode
+                modes <- file.mode(i_files)
                 execs <- as.logical(modes & as.octmode("100"))
 		Sys.chmod(i2_files[execs], dmode)
             }
@@ -1106,7 +1107,7 @@
                 parse_description_field(desc, "KeepSource",
                                         default = keep.source)
 	    ## Something above, e.g. lazydata,  might have loaded the namespace
-	    if (pkg_name %in% loadedNamespaces())
+	    if (isNamespaceLoaded(pkg_name))
 		unloadNamespace(pkg_name)
             deps_only <-
                 config_val_to_logical(Sys.getenv("_R_CHECK_INSTALL_DEPENDS_", "FALSE"))
@@ -1149,7 +1150,7 @@
 				types = build_help_types,
 				outenc = outenc)
 	    }
-	    if (file_test("-d", figdir <- file.path(pkg_dir, "man", "figures"))) {
+	    if (dir.exists(figdir <- file.path(pkg_dir, "man", "figures"))) {
 		starsmsg(paste0(stars, "*"), "copying figures")
 		dir.create(destdir <- file.path(instdir, "help", "figures"))
 		file.copy(Sys.glob(c(file.path(figdir, "*.png"),
@@ -1166,7 +1167,7 @@
 	    res <- try(.install_package_indices(".", instdir))
 	    if (inherits(res, "try-error"))
 		errmsg("installing package indices failed")
-            if(file_test("-d", "vignettes")) {
+            if(dir.exists("vignettes")) {
                 starsmsg(stars, "installing vignettes")
                 enc <- desc["Encoding"]
                 if (is.na(enc)) enc <- ""
@@ -1253,11 +1254,10 @@
     build_latex <- FALSE
     build_example <- FALSE
     use_configure <- TRUE
-    auto_zip <- FALSE
     configure_args <- character()
     configure_vars <- character()
     fake <- FALSE
-    lazy <- TRUE
+##    lazy <- TRUE
     lazy_data <- FALSE
     byte_compile <- NA # means take from DESCRIPTION file.
     ## Next is not very useful unless R CMD INSTALL reads a startup file
@@ -1277,6 +1277,7 @@
     resave_data <- FALSE
     compact_docs <- FALSE
     keep.source <- getOption("keep.source.pkgs")
+    built_stamp <- character()
 
     install_libs <- TRUE
     install_R <- TRUE
@@ -1404,6 +1405,8 @@
             byte_compile <- FALSE
         } else if (a == "--dsym") {
             dsym <- TRUE
+        } else if (substr(a, 1, 18) == "--built-timestamp=") {
+            built_stamp <- substr(a, 19, 1000)
         } else if (substr(a, 1, 1) == "-") {
             message("Warning: unknown option ", sQuote(a), domain = NA)
         } else pkgs <- c(pkgs, a)
@@ -1504,7 +1507,7 @@
                 errmsg("cannot extract package from ", sQuote(pkg))
             if (length(new) > 1L)
                 errmsg("extracted multiple files from ", sQuote(pkg))
-            if (file.info(new)$isdir) pkgname <- basename(new)
+            if (dir.exists(new)) pkgname <- basename(new)
             else errmsg("cannot extract package from ", sQuote(pkg))
 
             ## If we have a binary bundle distribution, there should
@@ -1571,7 +1574,7 @@
     group.writable <- if(WINDOWS) FALSE else {
 	## install package group-writable  iff  in group-writable lib
         d <-  as.octmode("020")
-	(file.info(lib)$mode & d) == d ## TRUE  iff  g-bit is "w"
+	(file.mode(lib) & d) == d ## TRUE  iff  g-bit is "w"
     }
 
     if (libs_only) {
@@ -1991,7 +1994,7 @@
                    Internal = character(),
                    stringsAsFactors = FALSE)
     } else {
-        lens <- sapply(topics, length)
+        lens <- lengths(topics)
         files <- sub("\\.[Rr]d$", "", Rd$File)
         internal <- sapply(Rd$Keywords, function(x) "internal" %in% x)
         data.frame(Topic = unlist(topics),
@@ -2069,7 +2072,8 @@
 
     ## No need to handle encodings: everything is in UTF-8
 
-    html_header(desc["Package"], desc["Title"], desc["Version"], outcon)
+    html_header(desc["Package"], htmlize(desc["Title"], TRUE),
+                desc["Version"], outcon)
 
     use_alpha <- (nrow(M) > 100)
     if (use_alpha) {
@@ -2079,7 +2083,7 @@
         if (m) nm <- c(" ", nm[-m])
         m <- match("misc", nm, 0L) # force last in all locales.
         if (m) nm <- c(nm[-m], "misc")
-	writeLines(c("<p align=\"center\">",
+	writeLines(c('<p style="text-align: center;">',
 		     paste0("<a href=\"#", nm, "\">", nm, "</a>"),
 		     "</p>\n"), outcon)
         for (f in nm) {
@@ -2088,13 +2092,13 @@
                 cat("\n<h2><a name=\"", f, "\">-- ", f, " --</a></h2>\n\n",
                     sep = "", file = outcon)
 	    writeLines(c('<table width="100%">',
-			 paste0('<tr><td width="25%"><a href="', MM[, 2L], '.html">',
+			 paste0('<tr><td style="width: 25%;"><a href="', MM[, 2L], '.html">',
 				MM$HTopic, '</a></td>\n<td>', MM[, 3L],'</td></tr>'),
 			 "</table>"), outcon)
        }
     } else if (nrow(M)) {
 	writeLines(c('<table width="100%">',
-		     paste0('<tr><td width="25%"><a href="', M[, 2L], '.html">',
+		     paste0('<tr><td style="width: 25%;"><a href="', M[, 2L], '.html">',
 			    M$HTopic, '</a></td>\n<td>', M[, 3L],'</td></tr>'),
 		     "</table>"), outcon)
     } else { # no rows
@@ -2129,7 +2133,7 @@
     ext     <- c(".html", ".tex", ".R")
     names(dirname) <- names(ext) <- c("html", "latex", "example")
     mandir <- file.path(dir, "man")
-    if (!file_test("-d", mandir)) return()
+    if (!dir.exists(mandir)) return()
     desc <- readRDS(file.path(outDir, "Meta", "package.rds"))$DESCRIPTION
     pkg <- desc["Package"]
     ver <- desc["Version"]

@@ -1,7 +1,7 @@
 #  File src/library/utils/R/linkhtml.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2012 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ make.packages.html <-
     if (temp && file.exists(f.tg) && file.exists(op)) {
         ## check if we can avoid remaking it.
         if(identical(lib.loc, readRDS(op))) {
-            dates <- file.info(c(f.tg, lib.loc))$mtime
+            dates <- file.mtime(c(f.tg, lib.loc))
             if(which.max(dates) == 1L) return(TRUE)
         }
     }
@@ -75,7 +75,7 @@ make.packages.html <-
         pkgs[[lib]] <- pg[order(toupper(pg), pg)]
     }
     if (WINDOWS) {
-        tot <- sum(sapply(pkgs, length))
+        tot <- sum(lengths(pkgs))
         if(verbose) {
             pb <- winProgressBar("R: creating packages.html", max = tot)
             on.exit(close(pb), add = TRUE)

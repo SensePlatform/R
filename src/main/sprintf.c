@@ -1,6 +1,6 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
- *  Copyright (C) 2002--2013     The R Core Team
+ *  Copyright (C) 2002--2015     The R Core Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,9 @@
 #include <Internal.h>
 #include "RBufferUtils.h"
 #include <R_ext/RS.h> /* for Calloc/Free */
+#ifdef Win32
+#include <trioremap.h>
+#endif
 
 #define MAXLINE MAXELTSIZE
 #define MAXNARGS 100

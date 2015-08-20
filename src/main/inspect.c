@@ -1,6 +1,6 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
- *  Copyright (C) 2009-2012 The R Core Team.
+ *  Copyright (C) 2009-2014 The R Core Team.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -251,6 +251,18 @@ SEXP attribute_hidden do_inspect(SEXP call, SEXP op, SEXP args, SEXP env) {
 	
     inspect_tree(0, CAR(args), deep, pvec);
     return obj;
+}
+
+SEXP attribute_hidden do_address(SEXP call, SEXP op, SEXP args, SEXP rho)
+{
+    checkArity(op, args);
+    return R_MakeExternalPtr((void *) CAR(args), R_NilValue, R_NilValue);
+}
+
+SEXP attribute_hidden do_refcnt(SEXP call, SEXP op, SEXP args, SEXP rho)
+{
+    checkArity(op, args);
+    return ScalarInteger(REFCNT(CAR(args)));
 }
 
 /* the following functions can be use internally and for debugging purposes -

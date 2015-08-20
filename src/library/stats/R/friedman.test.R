@@ -1,7 +1,7 @@
 #  File src/library/stats/R/friedman.test.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -46,11 +46,13 @@ function(y, groups, blocks, ...)
     }
 
     k <- nlevels(groups)
-    y <- matrix(unlist(split(y, blocks)), ncol = k, byrow = TRUE)
+    ## <FIXME split.matrix>
+    y <- matrix(unlist(split(c(y), blocks)), ncol = k, byrow = TRUE)
     y <- y[complete.cases(y), ]
     n <- nrow(y)
     r <- t(apply(y, 1L, rank))
-    TIES <- tapply(r, row(r), table)
+    ## <FIXME split.matrix>
+    TIES <- tapply(c(r), row(r), table)
     STATISTIC <- ((12 * sum((colSums(r) - n * (k + 1) / 2)^2)) /
                   (n * k * (k + 1)
                    - (sum(unlist(lapply(TIES, function (u) {u^3 - u}))) /
@@ -88,6 +90,7 @@ function(formula, data, subset, na.action, ...)
     m$formula <- formula
     if(is.matrix(eval(m$data, parent.frame())))
         m$data <- as.data.frame(data)
+    ## need stats:: for non-standard evaluation
     m[[1L]] <- quote(stats::model.frame)
     mf <- eval(m, parent.frame())
     DNAME <- paste(names(mf), collapse = " and ")

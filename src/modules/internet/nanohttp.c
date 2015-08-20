@@ -40,8 +40,6 @@
 #include <config.h>
 #endif
 
-#include <sys/types.h> // for ssize_t
-
 #undef HAVE_ZLIB_H
 
 #ifdef ENABLE_NLS
@@ -209,7 +207,7 @@ typedef struct RxmlNanoHTTPCtxt {
     int returnValue;	/* the protocol return value */
     char *statusMsg;    /* the protocol status message */
     char *contentType;	/* the MIME type for the input */
-    ssize_t contentLength;	/* the reported length */
+    DLsize_t contentLength;	/* the reported length */
     char *location;	/* the new URL in case of redirect */
     char *authHeader;	/* contents of {WWW,Proxy}-Authenticate header */
     char *encoding;	/* encoding extracted from the contentType */
@@ -573,7 +571,7 @@ RxmlNanoHTTPSend(RxmlNanoHTTPCtxtPtr ctxt)
     if (ctxt->state & XML_NANO_HTTP_WRITE) {
         unsigned int total_sent = 0;
         while (total_sent <strlen(ctxt->outptr)) {
-            ssize_t nsent = send(ctxt->fd, ctxt->outptr+total_sent,
+            DLsize_t nsent = send(ctxt->fd, ctxt->outptr+total_sent,
 				 strlen(ctxt->outptr)-total_sent, 0);
             if (nsent > 0)
                 total_sent += nsent;
@@ -708,6 +706,12 @@ RxmlNanoHTTPRecv(RxmlNanoHTTPCtxtPtr ctxt)
 		case EWOULDBLOCK:
 #if defined(EAGAIN) && EAGAIN != EWOULDBLOCK
 		case EAGAIN:
+#endif
+#if defined(WSAEINPROGRESS) && WSAEINPROGRESS != EINPROGRESS
+		case WSAEINPROGRESS:
+#endif
+#if defined(WSAEWOULDBLOCK) && WSAEWOULDBLOCK != EWOULDBLOCK
+		case WSAEWOULDBLOCK:
 #endif
 		    break;
 
@@ -875,10 +879,10 @@ RxmlNanoHTTPScanAnswer(RxmlNanoHTTPCtxtPtr ctxt, const char *line)
         cur += 15;
 	while ((*cur == ' ') || (*cur == '\t')) cur++;
 	{
-	    // was atoi, but ssize_t may be > long, let alone int.
+	    // was atoi, but DLsize_t may be > long, let alone int.
 	    char *endp;
 	    double len = strtod(cur, &endp);
-	    ctxt->contentLength = (ssize_t) len;
+	    ctxt->contentLength = (DLsize_t) len;
 	}
     } else if (!xmlStrncasecmp(BAD_CAST line, BAD_CAST"Location:", 9)) {
         cur += 9;
@@ -997,6 +1001,12 @@ RxmlNanoHTTPConnectAttempt(struct sockaddr *addr)
 	switch (socket_errno()) {
 	case EINPROGRESS:
 	case EWOULDBLOCK:
+#if defined(WSAEINPROGRESS) && WSAEINPROGRESS != EINPROGRESS
+	case WSAEINPROGRESS:
+#endif
+#if defined(WSAEWOULDBLOCK) && WSAEWOULDBLOCK != EWOULDBLOCK
+	case WSAEWOULDBLOCK:
+#endif	
 	    break;
 	default:
 	    perror("connect");
@@ -1120,7 +1130,13 @@ RxmlNanoHTTPConnectHost(const char *host, int port)
 	if (h->h_addrtype == AF_INET) {
 	    /* A records (IPv4) */
 	    memcpy(&ia, h->h_addr_list[i], h->h_length);
+#ifdef _WIN32
+	    // this is a u_short
 	    sockin.sin_family = h->h_addrtype;
+#else
+	    // this is usually a unsigned char.
+	    sockin.sin_family = (sa_family_t) h->h_addrtype;
+#endif
 	    sockin.sin_addr   = ia;
 	    sockin.sin_port   = htons(port);
 	    addr = (struct sockaddr *)&sockin;
@@ -1505,7 +1521,7 @@ RxmlNanoHTTPStatusMsg(void *ctx)
     return(ctxt->statusMsg);
 }
 
-ssize_t
+DLsize_t
 RxmlNanoHTTPContentLength(void *ctx)
 {
     RxmlNanoHTTPCtxtPtr ctxt = (RxmlNanoHTTPCtxtPtr) ctx;

@@ -1,7 +1,7 @@
 #  File src/library/utils/R/tar.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2014 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -84,7 +84,7 @@ untar <- function(tarfile, files = NULL, list = FALSE, exdir = ".",
     } else {
         cmd <- paste0(TAR, " -", cflag, "xf ", shQuote(tarfile))
         if (!missing(exdir)) {
-            if (!file_test("-d", exdir)) {
+            if (!dir.exists(exdir)) {
                 if(!dir.create(exdir, showWarnings = TRUE, recursive = TRUE))
                     stop(gettextf("failed to create directory %s", sQuote(exdir)),
                          domain = NA)
@@ -130,7 +130,7 @@ untar2 <- function(tarfile, files = NULL, list = FALSE, exdir = ".",
     mydir.create <- function(path, ...) {
         ## for Windows' sake
         path <- sub("[\\/]$", "", path)
-        if(file_test("-d", path)) return()
+        if(dir.exists(path)) return()
         if(!dir.create(path, showWarnings = TRUE, recursive = TRUE, ...))
            stop(gettextf("failed to create directory %s", sQuote(path)),
                 domain = NA)

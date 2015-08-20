@@ -1,7 +1,7 @@
 #  File src/library/utils/R/citation.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ function(given = NULL, family = NULL, middle = NULL,
         return(structure(list(), class = "person"))
     }
     args <- lapply(args, .listify)
-    args_length <- sapply(args, length)
+    args_length <- lengths(args)
     if(!all(args_length_ok <- args_length %in% c(1L, max(args_length))))
         warning(gettextf("Not all arguments are of the same length, the following need to be recycled: %s",
                          paste(names(args)[!args_length_ok],
@@ -117,7 +117,7 @@ function(given = NULL, family = NULL, middle = NULL,
         rval <- list(given = given, family = family, role = role,
                      email = email, comment = comment)
         ## Canonicalize 0-length character arguments to NULL.
-        if(any(ind <- (sapply(rval, length) == 0L)))
+        if(any(ind <- (lengths(rval) == 0L)))
             rval[ind] <- vector("list", length = sum(ind))
         ## Give nothing if there is nothing.
         if(all(sapply(rval, is.null)))
@@ -220,7 +220,7 @@ function(x, name)
     if(oname == "first") rval <- lapply(rval, head, 1L)
     if(oname == "middle") {
         rval <- lapply(rval, tail, -1L)
-        if(any(ind <- (sapply(rval, length) == 0L)))
+        if(any(ind <- (lengths(rval) == 0L)))
             rval[ind] <- vector("list", length = sum(ind))
     }
 
@@ -376,11 +376,16 @@ function(x,
          collapse =
          list(given = " ", family = " ", email = ", ",
               role = ", ", comment = ", "),
-         ...
+         ...,
+         style = c("text", "R")
          )
 {
     if(!length(x)) return(character())
-    
+
+    style <- match.arg(style)
+
+    if(style == "R") return(.format_person_as_R_code(x))
+
     args <- c("given", "family", "email", "role", "comment")
     include <- sapply(include, match.arg, args)
 
@@ -448,7 +453,7 @@ function(bibtype, textVersion = NULL, header = NULL, footer = NULL, key = NULL,
     other <- lapply(other, .listify)
     max_length <- max(sapply(c(args, other), length))
 
-    args_length <- sapply(args, length)
+    args_length <- lengths(args)
     if(!all(args_length_ok <- args_length %in% c(1L, max_length)))
         warning(gettextf("Not all arguments are of the same length, the following need to be recycled: %s",
                          paste(names(args)[!args_length_ok],
@@ -456,7 +461,7 @@ function(bibtype, textVersion = NULL, header = NULL, footer = NULL, key = NULL,
                 domain = NA)
     args <- lapply(args, function(x) rep(x, length.out = max_length))
 
-    other_length <- sapply(other, length)
+    other_length <- lengths(other)
     if(!all(other_length_ok <- other_length %in% c(1L, max_length)))
         warning(gettextf("Not all arguments are of the same length, the following need to be recycled: %s",
                          paste(names(other)[!other_length_ok],
@@ -512,7 +517,7 @@ function(bibtype, textVersion = NULL, header = NULL, footer = NULL, key = NULL,
 
     rval <- lapply(seq_along(args$bibtype),
                    function(i)
-                   do.call("bibentry1",
+                   do.call(bibentry1,
                            c(lapply(args, "[[", i),
                              list(other = lapply(other, "[[", i)))))
 
@@ -578,7 +583,7 @@ function(x, i, drop = TRUE)
     if(is.character(i) && is.null(names(x)))
         names(x) <- .bibentry_get_key(x)
     y <- x[i]
-    if(!all(ok <- sapply(y, length) > 0L)) {
+    if(!all(ok <- lengths(y) > 0L)) {
         warning("subscript out of bounds")
         y <- y[ok]
     }
@@ -611,7 +616,7 @@ function(x, style = "text", .bibstyle = NULL,
          sort = FALSE, ...)
 {
     if(!length(x)) return(character())
-    
+
     style <- .bibentry_match_format_style(style)
 
     if(sort) x <- sort(x, .bibstyle = .bibstyle)
@@ -631,7 +636,7 @@ function(x, style = "text", .bibstyle = NULL,
                    ## </FIXME>
                    con <- textConnection(rd)
                    on.exit(close(con))
-                   f(con, fragment = TRUE, out = out, ...)
+                   f(con, fragment = TRUE, out = out, permissive = TRUE, ...)
                    paste(readLines(out), collapse = "\n")
                })
     }
@@ -672,7 +677,7 @@ function(x, style = "text", .bibstyle = NULL,
                },
                "textVersion" = {
                    out <- lapply(unclass(x), attr, "textVersion")
-                   out[!sapply(out, length)] <- ""
+                   out[!lengths(out)] <- ""
                    unlist(out)
                },
                "citation" = .format_bibentry_as_citation(x),
@@ -775,7 +780,7 @@ function(cname, cargs)
     ## Format call with ragged right argument list (one arg per line).
     cargs <- as.list(cargs)
     n <- length(cargs)
-    lens <- sapply(cargs, length)
+    lens <- lengths(cargs)
     sums <- cumsum(lens)
     starters <- c(sprintf("%s(", cname),
                   rep.int(.blanks(nchar(cname) + 1L), sums[n] - 1L))
@@ -907,7 +912,7 @@ function(x, name, value)
 
     ## check bibtype
     if(name == "bibtype") {
-        stopifnot(all(sapply(value, length) == 1L))
+        stopifnot(all(lengths(value) == 1L))
         BibTeX_names <- names(tools:::BibTeX_entry_field_db)
         value <- unlist(value)
         pos <- match(tolower(value), tolower(BibTeX_names))
@@ -1043,12 +1048,12 @@ function(...)
 readCitationFile <-
 function(file, meta = NULL)
 {
+    meta <- as.list(meta)
     exprs <- tools:::.parse_CITATION_file(file, meta$Encoding)
 
     rval <- list()
     mheader <- NULL
     mfooter <- NULL
-    k <- 0L
     envir <- new.env(hash = TRUE)
     ## Make the package metadata available to the citation entries.
     assign("meta", meta, envir = envir)
@@ -1082,9 +1087,14 @@ function(package = "base", lib.loc = NULL, auto = NULL)
 {
     ## Allow citation(auto = meta) in CITATION files to include
     ## auto-generated package citation.
-    if(inherits(auto, "packageDescription")) {
+    if(!is.null(auto) &&
+       !is.logical(auto) &&
+       !any(is.na(match(c("Package", "Version", "Title"),
+                        names(meta <- as.list(auto))))) &&
+       !all(is.na(match(c("Authors@R", "Author"),
+                        names(meta))))
+       ) {
         auto_was_meta <- TRUE
-        meta <- auto
         package <- meta$Package
     } else {
         auto_was_meta <- FALSE
@@ -1281,7 +1291,7 @@ function(x)
     footer <- attr(x, "footer")
     x <- sapply(x, .format_person_for_plain_author_spec)
     ## Drop persons with irrelevant roles.
-    x <- x[x != ""]
+    x <- x[nzchar(x)]
     ## And format.
     if(!length(x)) return("")
     ## We need to ensure that the first line has no indentation, whereas
@@ -1311,17 +1321,20 @@ function(x)
 {
     if(is.character(x))
         x <- .read_authors_at_R_field(x)
-    ## Maintainers need cre roles and email addresses.
+    ## Maintainers need cre roles, valid email addresses and non-empty
+    ## names.
+    ## <FIXME>
+    ## Check validity of email addresses.
     x <- Filter(function(e)
-                !is.null(e$email) && ("cre" %in% e$role),
+                (!is.null(e$given) || !is.null(e$family)) && !is.null(e$email) && ("cre" %in% e$role),
                 x)
-    ## If this leaves nothing ...
-    if(!length(x)) return("")
-    paste(format(x, include = c("given", "family", "email")),
-          collapse = ",\n  ")
+    ## </FIXME>
+    ## If this leaves nothing or more than one ...
+    if(length(x) != 1L) return("")
+    format(x, include = c("given", "family", "email"))
 }
 
-# Cite using the default style (which is usually citeNatbib)
+## Cite using the default style (which is usually citeNatbib)
 
 cite <-
 function(keys, bib, ...)
@@ -1332,9 +1345,9 @@ function(keys, bib, ...)
     fn(keys, bib, ...)
 }
 
-# Cite using natbib-like options.  A bibstyle would normally
-# choose some of these options and just have a cite(keys, bib, previous)
-# function within it.
+## Cite using natbib-like options.  A bibstyle would normally
+## choose some of these options and just have a cite(keys, bib, previous)
+## function within it.
 
 citeNatbib <-
 local({
@@ -1354,7 +1367,7 @@ local({
 	}
 
 	authorList <- function(paper)
-	    names <- sapply(paper$author, shortName)
+	    sapply(paper$author, shortName)
 
 	if (!missing(previous))
 	    cited <<- previous

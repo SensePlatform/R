@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1997-1999   Saikat DebRoy
- *  Copyright (C) 1999-2014   The R Core Team
+ *  Copyright (C) 1999-2015   The R Core Team
  *  Copyright (C) 2003-2010   The R Foundation
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -876,7 +876,7 @@ dogdrv(int nr, int n, double *x, double f, double *g, double *a, double *p,
 
     Rboolean fstdog, nwtake;
     int i;
-    double fplsp, rnwtln, eta = 0.0, cln = 0.0, tmp; /* -Wall */
+    double fplsp = 0.0, rnwtln, eta = 0.0, cln = 0.0, tmp; /* -Wall */
 
     tmp = 0.;
     for (i = 0; i < n; ++i)
@@ -1092,7 +1092,7 @@ hookdrv(int nr, int n, double *x, double f, double *g, double *a,
 
     Rboolean fstime, nwtake;
     int i, j;
-    double bet, alpha, fplsp, rnwtln, tmp;
+    double bet, alpha, fplsp = 0.0 /* -Wall */, rnwtln, tmp;
 
     tmp = 0.;
     for (i = 0; i < n; ++i)

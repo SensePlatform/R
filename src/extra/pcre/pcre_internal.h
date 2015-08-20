@@ -48,10 +48,9 @@ depending on the PRIV macro. */
 
 #include <config.h>
 
-/* and those that are not in R's configure */
+/* and those that are not in R's configure:
+   LINK_SIZE is set on the command line */
 #define HAVE_MEMMOVE 1
-#ifndef LINK_SIZE
-#define LINK_SIZE 2
 #define MATCH_LIMIT 10000000
 #define MATCH_LIMIT_RECURSION MATCH_LIMIT
 #define MAX_NAME_COUNT 10000
@@ -59,8 +58,8 @@ depending on the PRIV macro. */
 #define NEWLINE 10
 #define PARENS_NEST_LIMIT 250
 #define POSIX_MALLOC_THRESHOLD 10
-#define SUPPORT_UTF8
 #define SUPPORT_UCP
+#define SUPPORT_UTF
 
 /* See http://sourceforge.net/p/predef/wiki/Architectures/
    SPARC_32 support added in 8.32, 'experimental'.
@@ -73,7 +72,6 @@ depending on the PRIV macro. */
 #endif
 #endif
 
-#endif
 
 /* Define PCRE_DEBUG to get debugging output on stdout. */
 
@@ -2310,7 +2308,7 @@ enum { ERR0,  ERR1,  ERR2,  ERR3,  ERR4,  ERR5,  ERR6,  ERR7,  ERR8,  ERR9,
        ERR50, ERR51, ERR52, ERR53, ERR54, ERR55, ERR56, ERR57, ERR58, ERR59,
        ERR60, ERR61, ERR62, ERR63, ERR64, ERR65, ERR66, ERR67, ERR68, ERR69,
        ERR70, ERR71, ERR72, ERR73, ERR74, ERR75, ERR76, ERR77, ERR78, ERR79,
-       ERR80, ERR81, ERR82, ERR83, ERR84, ERR85, ERRCOUNT };
+       ERR80, ERR81, ERR82, ERR83, ERR84, ERR85, ERR86, ERRCOUNT };
 
 /* JIT compiling modes. The function list is indexed by them. */
 
@@ -2475,6 +2473,7 @@ typedef struct compile_data {
   BOOL had_pruneorskip;             /* (*PRUNE) or (*SKIP) encountered */
   BOOL check_lookbehind;            /* Lookbehinds need later checking */
   BOOL dupnames;                    /* Duplicate names exist */
+  BOOL iscondassert;                /* Next assert is a condition */
   int  nltype;                      /* Newline type */
   int  nllen;                       /* Newline string length */
   pcre_uchar nl[4];                 /* Newline string when fixed length */
@@ -2487,6 +2486,13 @@ typedef struct branch_chain {
   struct branch_chain *outer;
   pcre_uchar *current_branch;
 } branch_chain;
+
+/* Structure for mutual recursion detection. */
+
+typedef struct recurse_check {
+  struct recurse_check *prev;
+  const pcre_uchar *group;
+} recurse_check;
 
 /* Structure for items in a linked list that represents an explicit recursive
 call within the pattern; used by pcre_exec(). */

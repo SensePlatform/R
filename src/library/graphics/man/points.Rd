@@ -1,9 +1,7 @@
 % File src/library/graphics/man/points.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2014 R Core Team
+% Copyright 1995-2015 R Core Team
 % Distributed under GPL 2 or later
-
-\newcommand{\sspace}{\ifelse{latex}{\out{~}}{ }}
 
 \name{points}
 \alias{points}
@@ -156,8 +154,8 @@ points(x, \dots)
 
   What happens for very small or zero values of \code{cex} is
   device-dependent: symbols or characters may become invisible or
-  they may be plotted at a fixed minimum size.   As
-  from \R 2.15.0, circles of zero radius will not be plotted.
+  they may be plotted at a fixed minimum size.  Circles of zero radius
+  will not be plotted.
 }
 \references{
   Becker, R. A., Chambers, J. M. and Wilks, A. R. (1988)

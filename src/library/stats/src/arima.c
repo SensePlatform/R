@@ -1,6 +1,6 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
- *  Copyright (C) 2002-2014   The R Core Team.
+ *  Copyright (C) 2002-2015   The R Core Team.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -164,16 +164,16 @@ KalmanLike(SEXP sy, SEXP mod, SEXP sUP, SEXP op, SEXP update)
 	}
     }
 
-    SEXP res = allocVector(REALSXP, 2);
+    SEXP res = PROTECT(allocVector(REALSXP, 2));
     REAL(res)[0] = ssq/nu; REAL(res)[1] = sumlog/nu;
     if(lop) {
 	SET_VECTOR_ELT(ans, 0, res);
 	if(asLogical(update)) setAttrib(ans, install("mod"), mod);
-	UNPROTECT(2);
+	UNPROTECT(3);
 	return ans;
     } else {
 	if(asLogical(update)) setAttrib(res, install("mod"), mod);
-	UNPROTECT(1);
+	UNPROTECT(2);
 	return res;
     }
 }
@@ -1034,7 +1034,8 @@ SEXP getQ0(SEXP sPhi, SEXP sTheta)
     double *P = REAL(res);
 
     if (r == 1) {
-	P[0] = 1.0 / (1.0 - phi[0] * phi[0]);
+	if (p == 0) P[0] = 1.0; // PR#16419
+	else P[0] = 1.0 / (1.0 - phi[0] * phi[0]);
 	UNPROTECT(1);
 	return res;
     }

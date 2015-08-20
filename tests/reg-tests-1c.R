@@ -17,7 +17,7 @@ stopifnot(z == c(101, 204, 309, 104, 210, 318))
 ## https://stat.ethz.ch/pipermail/r-devel/2013-January/065700.html
 x <- 1:6
 y <- split(x, 1:2)
-class(x) <- "A"
+class(x) <- "ABC" ## class(x) <- "A" creates an invalid object
 yy <- split(x, 1:2)
 stopifnot(identical(y, yy))
 ## were different in R < 3.0.0
@@ -68,7 +68,7 @@ ftable(m)
 ## Artificial example [was "infinite loop" on x86_64; PR#15364]
 rr <- c(rep(-0.4, 5), rep(-0.4- 1.11e-16, 14), -.5)
 r. <- signif(rr, 12)
-try ( k3 <- kmeans(rr, 3, trace=2) ) ## Warning: Quick-Transfer.. steps exceed
+k3 <- kmeans(rr, 3, trace=2) ## Warning: Quick-Transfer.. steps exceed
 try ( k. <- kmeans(r., 3) ) # after rounding, have only two distinct points
       k. <- kmeans(r., 2)   # fine
 
@@ -349,6 +349,59 @@ hw <- hclust(dist(sqrt(1:5)), method=c(M = "ward"))
 ## failed for 2 days in R-devel/-alpha
 
 
+## PR#15758
+my_env <- new.env(); my_env$one <- 1L
+save(one, file = tempfile(), envir = my_env)
+## failed in R < 3.1.1.
+
+
+## Conversion to numeric in boundary case
+ch <- "0x1.ffa0000000001p-1"
+rr <- type.convert(ch, numerals = "allow.loss")
+rX <- type.convert(ch, numerals = "no.loss")
+stopifnot(is.numeric(rr), identical(rr, rX),
+          all.equal(rr, 0.999267578125),
+	  all.equal(type.convert(ch,	      numerals = "warn"),
+		    type.convert("0x1.ffap-1",numerals = "warn"), tol = 5e-15))
+## type.convert(ch) was not numeric in R 3.1.0
+##
+ch <- "1234567890123456789"
+rr <- type.convert(ch, numerals = "allow.loss")
+rX <- type.convert(ch, numerals = "no.loss")
+rx <- type.convert(ch, numerals = "no.loss", as.is = TRUE)
+tools::assertWarning(r. <- type.convert(ch, numerals = "warn.loss"))
+stopifnot(is.numeric(rr), identical(rr, r.), all.equal(rr, 1.234567890e18),
+	  is.factor(rX),  identical(rx, ch))
+
+
+## PR#15764: integer overflow could happen without a warning or giving NA
+tools::assertWarning(ii <- 1980000020L + 222000000L)
+stopifnot(is.na(ii))
+tools::assertWarning(ii <- (-1980000020L) + (-222000000L))
+stopifnot(is.na(ii))
+tools::assertWarning(ii <- (-1980000020L) - 222000000L)
+stopifnot(is.na(ii))
+tools::assertWarning(ii <- 1980000020L - (-222000000L))
+stopifnot(is.na(ii))
+## first two failed for some version of clang in R < 3.1.1
+
+
+## PR#15735: formulae with exactly 32 variables
+myFormula <- as.formula(paste(c("y ~ x0", paste0("x", 1:30)), collapse = "+"))
+ans <- update(myFormula, . ~ . - w1)
+stopifnot(identical(ans, myFormula))
+
+updateArgument <-
+    as.formula(paste(c(". ~ . ", paste0("w", 1:30)), collapse = " - "))
+ans2 <- update(myFormula, updateArgument)
+stopifnot(identical(ans2, myFormula))
+
+
+## PR#15753
+0x110p-5L
+stopifnot(.Last.value == 8.5)
+## was 272 with a garbled message in R 3.0.0 - 3.1.0.
+
 
 ## numericDeriv failed to duplicate variables in
 ## the expression before modifying them.  PR#15849
@@ -403,6 +456,271 @@ stopifnot(hcab$order == c(2, 4, 1, 3, 7, 5, 6),
 	  hcab$labels == c(paste0("A", 1:4), paste0("B", 1:3)))
 ## was wrong in R <= 3.1.1
 
+
+## bw.SJ() and similar with NA,Inf values, PR#16024
+try(bw.SJ (c(NA,2,3)))
+try(bw.bcv(c(-Inf,2,3)))
+try(bw.ucv(c(1,NaN,3,4)))
+## seg.faulted  in  3.0.0 <= R <= 3.1.1
+
+
+## as.dendrogram() with wrong input
+x <- rbind(c( -6, -9), c(  0, 13),
+	   c(-15,  6), c(-14,  0), c(12,-10))
+dx <- dist(x,"manhattan")
+hx <- hclust(dx)
+hx$merge <- matrix(c(-3, 1, -2, 3,
+                     -4, -5, 2, 3), 4,2)
+tools::assertError(as.dendrogram(hx))
+## 8 member dendrogram and memory explosion for larger examples in R <= 3.1.2
+
+
+## abs with named args failed, PR#16047
+abs(x=1i)
+## Complained that the arg should be named z
+
+
+## Big exponents overflowed, PR#15976
+x <- 0E4933
+y <- 0x0p100000
+stopifnot(x == 0, y == 0)
+##
+
+
+## drop.terms() dropped some attributes, PR#16029
+test <- model.frame(Employed ~ Year + poly(GNP,3) + Population, data=longley)
+mterm <- terms(test)
+mterm2 <- drop.terms(mterm, 3)
+predvars <- attr(mterm2, "predvars")
+dataClasses <- attr(mterm2, "dataClasses")
+factors <- attr(mterm2, "factors")
+stopifnot(is.language(predvars), length(predvars) == length(dataClasses)+1,
+          all(names(dataClasses) == rownames(factors)))
+## Previously dropped predvars and dataClasses
+
+
+## prompt() did not escape percent signs properly
+fn <- function(fmt = "%s") {}
+f <- tempfile(fileext = ".Rd")
+prompt(fn, filename = f)
+rd <- tools::parse_Rd(f)
+## Gave syntax errors because the percent sign in Usage
+## was taken as the start of a comment.
+
+
+## power.t.test() failure for very large n (etc): PR#15792
+(ptt <- power.t.test(delta = 1e-4, sd = .35, power = .8))
+(ppt <- power.prop.test(p1 = .5, p2 = .501, sig.level=.001, power=0.90, tol=1e-8))
+stopifnot(all.equal(ptt$n, 192297000, tol = 1e-5),
+          all.equal(ppt$n,  10451937, tol = 1e-7))
+## call to uniroot() did not allow n > 1e7
+
+
+## save(*, ascii=TRUE):  PR#16137
+x0 <- x <- c(1, NA, NaN)
+save(x, file=(sf <- tempfile()), ascii = TRUE)
+load(sf)
+stopifnot(identical(x0, x))
+## x had 'NA' instead of 'NaN'
+
+
+## PR#16205
+stopifnot(length(glob2rx(character())) == 0L)
+## was "^$" in R < 3.1.3
+
+
+### Bugs fixed in R 3.2.0
+
+## Bugs reported by Radford Neal
+x <- pairlist(list(1, 2))
+x[[c(1, 2)]] <- NULL   # wrongly gave an error, referring to misuse
+                       # of the internal SET_VECTOR_ELT procedure
+stopifnot(identical(x, pairlist(list(1))))
+
+a <- pairlist(10, 20, 30, 40, 50, 60)
+dim(a) <- c(2, 3)
+dimnames(a) <- list(c("a", "b"), c("x", "y", "z"))
+# print(a)              # doesn't print names, not fixed
+a[["a", "x"]] <- 0
+stopifnot(a[["a", "x"]] == 0)
+## First gave a spurious error, second caused a seg.fault
+
+
+## Radford (R-devel, June 24, 2014); M.Maechler
+m <- matrix(1:2, 1,2); v <- 1:3
+stopifnot(identical(crossprod(2, v), t(2) %*% v),
+	  identical(crossprod(m, v), t(m) %*% v),
+	  identical(5 %*% v, 5 %*% t(v)),
+          identical(tcrossprod(m, 1:2), m %*% 1:2) )
+## gave error "non-conformable arguments" in R <= 3.2.0
+
+
+## list <--> environment
+L0 <- list()
+stopifnot(identical(L0, as.list(as.environment(L0))))
+## as.env..() did not work, and as.list(..) gave non-NULL names in R 3.1.x
+
+
+## all.equal() for environments and refClass()es
+RR <- setRefClass("Ex", fields = list(nr = "numeric"))
+m1 <- RR$new(); m2 <- RR$new(); m3 <- RR$new(nr = pi); m4 <- RR$new(nr=3.14159)
+ee <- emptyenv(); e2 <- new.env()
+stopifnot(all.equal(ee,ee), identical(ee,ee), !identical(ee,e2), all.equal(ee,e2),
+	  identical(m3,m3), !identical(m1,m2),
+	  all.equal(m1,m2), !isTRUE(all.equal(m1,m3)), !isTRUE(all.equal(m1,m4)),
+	  all.equal(m3,m4, tol=1e-6), grepl("relative difference", all.equal(m3,m4)),
+	  TRUE)
+## did not work in R 3.1.x
+e3 <- new.env()
+e3$p <- "p"; e2$p <- "p"; ae.p <- all.equal(e2,e3)
+e3$q <- "q";              ae.q <- all.equal(e2,e3)
+e2$q <- "Q";              ae.Q <- all.equal(e2,e3)
+stopifnot(ae.p, grepl("^Length", ae.q), grepl("string mismatch", ae.Q))
+e2$q <- "q"; e2$r <- pi; e3$r <- 3.14159265
+stopifnot(all.equal(e2, e3),
+	  grepl("relative difference", all.equal(e2, e3, tol=1e-10)))
+g <- globalenv() # so it now contains itself
+l <- list(e = g)
+stopifnot(all.equal(g, g),
+	  all.equal(l, l))
+## these ran into infinite recursion error.
+
+
+## missing() did not propagate through '...', PR#15707
+check <- function(x,y,z) c(missing(x), missing(y), missing(z))
+check1 <- function(...) check(...)
+check2 <- function(...) check1(...)
+stopifnot(identical(check2(one, , three), c(FALSE, TRUE, FALSE)))
+## missing() was unable to handle recursive promises
+
+
+## envRefClass prototypes are a bit special -- broke all.equal() for baseenv()
+rc <- getClass("refClass")
+rp <- rc@prototype
+str(rp) ## failed
+rp ## show() failed ..
+(ner <- new("envRefClass")) # show() failed
+stopifnot(all.equal(rp,rp), all.equal(ner,ner))
+be <- baseenv()
+system.time(stopifnot(all.equal(be,be)))## <- takes a few sec's
+stopifnot(
+    grepl("not identical.*character", print(all.equal(rp, ner))),
+    grepl("not identical.*character", print(all.equal(ner, rp))))
+system.time(stopifnot(all.equal(globalenv(), globalenv())))
+## Much of the above failed in  R <= 3.2.0
+
+
+## while did not protect its argument, which caused an error
+## under gctorture, PR#15990
+gctorture()
+suppressWarnings(while(c(FALSE, TRUE)) 1)
+gctorture(FALSE)
+## gave an error because the test got released when the warning was generated.
+
+
+## hist(x, breaks =) with too large bins, PR#15988
+set.seed(5); x <- runif(99)
+Hist <- function(x, b) hist(x, breaks = b, plot = FALSE)$counts
+for(k in 1:5) {
+    b0 <- seq_len(k-1)/k
+    H.ok <- Hist(x, c(-10, b0, 10))
+    for(In in c(1000, 1e9, Inf))
+	stopifnot(identical(Hist(x, c(-In, b0, In)), H.ok),
+		  identical(Hist(x, c( 0,  b0, In)), H.ok))
+}
+## "wrong" results for k in {2,3,4} in R 3.1.x
+
+
+## eigen(*, symmetric = <default>) with asymmetric dimnames,  PR#16151
+m <- matrix(c(83,41), 5, 4,
+	    dimnames=list(paste0("R",1:5), paste0("C",1:4)))[-5,] + 3*diag(4)
+stopifnot( all.equal(eigen(m, only.values=TRUE) $ values,
+		     c(251, 87, 3, 3), tol=1e-14) )
+## failed, using symmetric=FALSE and complex because of the asymmetric dimnames()
+
+
+## match.call() re-matching '...'
+test <- function(x, ...) test2(x, 2, ...)
+test2 <- function(x, ...) match.call(test2, sys.call())
+stopifnot(identical(test(1, 3), quote(test2(x=x, 2, 3))))
+## wrongly gave test2(x=x, 2, 2, 3) in R <= 3.1.2
+
+
+## callGeneric not forwarding dots in call (PR#16141)
+setGeneric("foo", function(x, ...) standardGeneric("foo"))
+setMethod("foo", "character",
+          function(x, capitalize = FALSE) if (capitalize) toupper(x) else x)
+setMethod("foo", "factor",
+          function(x, capitalize = FALSE) { x <- as.character(x);  callGeneric() })
+toto1 <- function(x, ...) foo(x, ...)
+stopifnot(identical(toto1(factor("a"), capitalize = TRUE), "A"))
+## wrongly did not capitalize in R <= 3.1.2
+
+
+## Accessing non existing objects must be an error
+tools::assertError(base :: foobar)
+tools::assertError(base :::foobar)
+tools::assertError(stats:::foobar)
+tools::assertError(stats:: foobar)
+## lazy data only via '::', not ':::' :
+stopifnot(    nrow(datasets:: swiss) == 47)
+tools::assertError(datasets:::swiss)
+## The ::: versions gave NULL in certain development versions of R
+stopifnot(identical(stats4::show -> s4s,
+		    get("show", asNamespace("stats4") -> ns4)),
+	  s4s@package == "methods",
+	  is.null(ns4[["show"]]) # not directly in stats4 ns
+	  )
+## stats4::show was NULL for 4 hours in R-devel
+
+
+## mode<- did too much evaluation (PR#16215)
+x <- y <- quote(-2^2)
+x <- as.list(x)
+mode(y) <- "list"
+stopifnot(identical(x, y))
+## y ended up containing -4, not -2^2
+
+
+## besselJ()/besselY() with too large order
+besselJ(1, 2^64) ## NaN with a warning
+besselY(1, c(2^(60:70), Inf))
+## seg.faulted in R <= 3.1.2
+
+
+## besselJ()/besselY() with  nu = k + 1/2; k in {-1,-2,..}
+besselJ(1, -1750.5) ## Inf, with only one warning...
+stopifnot(is.finite(besselY(1, .5 - (1500 + 0:10))))
+## last gave NaNs; both: more warnings in R <= 3.1.x
+
+
+## BIC() for arima(), also with NA's
+lho <- lh; lho[c(3,7,13,17)] <- NA
+alh300 <- arima(lh,  order = c(3,0,0))
+alh311 <- arima(lh,  order = c(3,1,1))
+ao300  <- arima(lho, order = c(3,0,0))
+ao301  <- arima(lho, order = c(3,0,1))
+## AIC/BIC for *different* data rarely makes sense ... want warning:
+tools::assertWarning(AA <- AIC(alh300,alh311, ao300,ao301))
+tools::assertWarning(BB <- BIC(alh300,alh311, ao300,ao301))
+fmLst <- list(alh300,alh311, ao300,ao301)
+## nobs() did not "work" in R < 3.2.0:
+stopifnot(sapply(fmLst, nobs) == c(48,47, 44,44))
+lls <- lapply(fmLst, logLik)
+str(lapply(lls, unclass))# -> 'df' and 'nobs'
+## 'manual BIC' via generalized AIC:
+stopifnot(all.equal(BB[,"BIC"],
+                    sapply(fmLst, function(fm) AIC(fm, k = log(nobs(fm))))))
+## BIC() was NA unnecessarily in  R < 3.2.0; nobs() was not available eiher
+
+
+## as.integer() close and beyond maximal integer
+MI <- .Machine$integer.max
+stopifnot(identical( MI, as.integer( MI + 0.99)),
+	  identical(-MI, as.integer(-MI - 0.99)),
+	  is.na(as.integer(as.character( 100*MI))),
+	  is.na(as.integer(as.character(-100*MI))))
+## The two cases with positive numbers  failed in R <= 3.2.0
 
 
 proc.time()

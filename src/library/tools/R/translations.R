@@ -1,7 +1,7 @@
 #  File src/library/tools/R/translations.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ en_quote <- function(potfile, outfile)
         this <- paste0(this, collapse="")
         ## This is the fixup: need to avoid apostrophes, which follow alnum
         this <- gsub("^'([^`']*)'",'‘\\1’', this)
-        this <- gsub("([^[:alpha:]]|\\\\\n)'([^`']*)'",'\\1‘\\2’', this)
+        this <- gsub("([^[:alpha:]]|\\\\n)'([^`']*)'",'\\1‘\\2’', this)
         out <- if (n > 1L) {
             ## now split where it was before
             this1 <- character()

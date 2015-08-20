@@ -1,7 +1,7 @@
 #  File src/library/utils/R/sourceutils.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
 removeSource <- function(fn) {
     stopifnot(is.function(fn))
     if (is.primitive(fn)) return(fn)
-    attr(fn, "source") <- NULL
     attr(fn, "srcref") <- NULL
     attr(body(fn), "wholeSrcref") <- NULL
     attr(body(fn), "srcfile") <- NULL
@@ -156,10 +155,10 @@ getParseText <- function(parseData, id) {
     d <- parseData[as.character(id),]
     text <- d$text
     if (is.null(text)) {
-    	text <- character(nrow(text))
+    	text <- character(nrow(d))
     	blank <- seq_along(text)
     } else
-    	blank <- which(!nzchar(text))
+    	blank <- which(!nzchar(text) | (d$token == "STR_CONST" & grepl("^[[]", text)))
     for (i in blank) {
 	lines <- getSrcLines(srcfile, d$line1[i], d$line2[i])
         n <- length(lines)

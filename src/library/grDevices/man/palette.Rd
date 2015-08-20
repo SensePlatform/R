@@ -1,9 +1,7 @@
 % File src/library/grDevices/man/palette.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2013 R Core Team
+% Copyright 1995-2015 R Core Team
 % Distributed under GPL 2 or later
-
-\newcommand{\sspace}{\ifelse{latex}{\out{~}}{ }}
 
 \name{palette}
 \title{Set or View the Graphics Palette}
@@ -36,11 +34,10 @@ palette(value)
   the palette is changed, the new palette applies to all subsequent
   plotting.
 
-  Prior to \R 3.0.0 the current palette also applies to re-plotting (for
-  example if an on-screen device is resized or \code{\link{dev.copy}} or
-  \code{\link{replayPlot}} is used).  In current \R, the palette is
-  recorded on the displaylist at the start of each page and when it is
-  changed.
+  The current palette also applies to re-plotting (for example if an
+  on-screen device is resized or \code{\link{dev.copy}} or
+  \code{\link{replayPlot}} is used).  The palette is recorded on the
+  displaylist at the start of each page and when it is changed.
 }
 
 \value{

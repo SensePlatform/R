@@ -1,7 +1,7 @@
 #  File src/library/tcltk/R/Tk.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2014 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@
     val2string <- function(x) {
         if (is.null(x)) return("")
         if (is.tkwin(x)){ current.win <<- x ; return (.Tk.ID(x)) }
-	if (inherits(x,"tclVar")) return(ls(unclass(x)$env))
+	if (inherits(x,"tclVar")) return(names(unclass(x)$env))
         if (isCallback(x)){
 	    # Jump through some hoops to protect from GC...
 	    ref <- local({value <- x; envir <- pframe; environment()})
@@ -137,7 +137,7 @@
     val2obj <- function(x) {
         if (is.null(x)) return(NULL)
         if (is.tkwin(x)){current.win <<- x ; return(as.tclObj(.Tk.ID(x)))}
-	if (inherits(x,"tclVar")) return(as.tclObj(ls(unclass(x)$env)))
+	if (inherits(x,"tclVar")) return(as.tclObj(names(unclass(x)$env)))
         if (isCallback(x)){
 	    # Jump through some hoops to protect from GC...
 	    ref <- local({value <- x; envir <- pframe; environment()})
@@ -196,7 +196,7 @@ tclVar <- function(init = "") {
    name <- paste0("::RTcl", n)
    l <- list(env = new.env())
    assign(name, NULL, envir = l$env)
-   reg.finalizer(l$env, function(env) tcl("unset", ls(env)))
+   reg.finalizer(l$env, function(env) tcl("unset", names(env)))
    class(l) <- "tclVar"
    tclvalue(l) <- init
    l
@@ -206,14 +206,14 @@ tclObj <- function(x) UseMethod("tclObj")
 "tclObj<-" <- function(x, value) UseMethod("tclObj<-")
 
 tclObj.tclVar <- function(x){
-    z <- .External(.C_RTcl_ObjFromVar, ls(x$env))
+    z <- .External(.C_RTcl_ObjFromVar, names(x$env))
     class(z) <- "tclObj"
     z
 }
 
 "tclObj<-.tclVar" <- function(x, value){
     value <- as.tclObj(value)
-    .External(.C_RTcl_AssignObjToVar, ls(x$env), value)
+    .External(.C_RTcl_AssignObjToVar, names(x$env), value)
     x
 }
 
@@ -229,7 +229,7 @@ print.tclObj <- function(x,...) {
 }
 
 "tclvalue<-.tclVar" <- function(x, value) {
-    name <- ls(unclass(x)$env)
+    name <- names(unclass(x)$env)
     tcl("set", name, value)
     x
 }
@@ -242,7 +242,7 @@ tclvalue.default <- function(x) tclvalue(tcl("set", as.character(x)))
     x
 }
 
-as.character.tclVar <- function(x, ...) ls(unclass(x)$env)
+as.character.tclVar <- function(x, ...) names(unclass(x)$env)
 
 as.character.tclObj <- function(x, ...)
     .External(.C_RTcl_ObjAsCharVector, x)
@@ -315,7 +315,6 @@ ttkcheckbutton <- function(parent, ...) tkwidget(parent, "ttk::checkbutton", ...
 ttkcombobox    <- function(parent, ...) tkwidget(parent, "ttk::combobox", ...)
 ttkentry       <- function(parent, ...) tkwidget(parent, "ttk::entry", ...)
 ttkframe       <- function(parent, ...) tkwidget(parent, "ttk::frame", ...)
-ttkimage       <- function(parent, ...) tkwidget(parent, "ttk::image", ...)
 ttklabel       <- function(parent, ...) tkwidget(parent, "ttk::label", ...)
 ttklabelframe  <- function(parent, ...) tkwidget(parent, "ttk::labelframe", ...)
 ttkmenubutton  <- function(parent, ...) tkwidget(parent, "ttk::menubutton", ...)
@@ -323,9 +322,11 @@ ttknotebook    <- function(parent, ...) tkwidget(parent, "ttk::notebook", ...)
 ttkpanedwindow <- function(parent, ...) tkwidget(parent, "ttk::panedwindow", ...)
 ttkprogressbar <- function(parent, ...) tkwidget(parent, "ttk::progressbar", ...)
 ttkradiobutton <- function(parent, ...) tkwidget(parent, "ttk::radiobutton", ...)
+ttkscale       <- function(parent, ...) tkwidget(parent, "ttk::scale", ...)
 ttkscrollbar   <- function(parent, ...) tkwidget(parent, "ttk::scrollbar", ...)
 ttkseparator   <- function(parent, ...) tkwidget(parent, "ttk::separator", ...)
 ttksizegrip    <- function(parent, ...) tkwidget(parent, "ttk::sizegrip", ...)
+ttkspinbox     <- function(parent, ...) tkwidget(parent, "ttk::spinbox", ...)
 ttktreeview    <- function(parent, ...) tkwidget(parent, "ttk::treeview", ...)
 
 
@@ -385,10 +386,15 @@ tkgrab.release <- function(...) tcl("grab", "release", ...)
 tkgrab.set     <- function(...) tcl("grab", "set", ...)
 tkgrab.status  <- function(...) tcl("grab", "status", ...)
 
-tkimage.cget     <- function(...) tcl("image","cget",...)
-tkimage.configure <- function(...) tcl("image","configure",...)
-tkimage.create   <- function(...) tcl("image","create",...)
-tkimage.names    <- function(...) tcl("image","names",...)
+tkimage.create <- function(...) tcl("image", "create", ...)
+tkimage.delete <- function(...) tcl("image", "delete", ...)
+tkimage.height <- function(...) tcl("image", "height", ...)
+tkimage.inuse  <- function(...) tcl("image", "inuse", ...)
+tkimage.names  <- function(...) tcl("image", "names", ...)
+tkimage.type   <- function(...) tcl("image", "type", ...)
+tkimage.types  <- function(...) tcl("image", "types", ...)
+tkimage.width  <- function(...) tcl("image", "width", ...)
+
 
 ## NB: some widgets also have a selection.clear command, hence the "X".
 ## tkselection.clear might be made a generic function instead.

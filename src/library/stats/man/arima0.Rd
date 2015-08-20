@@ -1,6 +1,6 @@
 % File src/library/stats/man/arima0.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2012 R Core Team
+% Copyright 1995-2014 R Core Team
 % Distributed under GPL 2 or later
 
 \name{arima0}
@@ -63,7 +63,7 @@ arima0(x, order = c(0, 0, 0),
     will be ignored.}
 
   \item{method}{Fitting method: maximum likelihood or minimize
-    conditional sum-of-squares.}
+    conditional sum-of-squares.  Can be abbreviated.}
 
   \item{n.cond}{Only used if fitting by conditional-sum-of-squares: the
     number of initial observations to ignore.  It will be ignored if

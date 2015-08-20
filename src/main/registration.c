@@ -1,6 +1,6 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
- *  Copyright (C) 2002-2012	The R Core Team.
+ *  Copyright (C) 2002-2014	The R Core Team.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -69,13 +69,6 @@ static R_CallMethodDef callMethods [] = {
     CALLDEF(R_addTaskCallback, 4),
     CALLDEF(R_getTaskCallbackNames, 0),
     CALLDEF(R_removeTaskCallback, 1),
-
-#ifdef BC_PROFILING
-    // These have no interface in R, so used directly by .Call
-    CALLDEF(R_getbcprofcounts, 0),
-    CALLDEF(R_startbcprof, 0),
-    CALLDEF(R_stopbcprof, 0),
-#endif
 
     {NULL, NULL, 0}
 };

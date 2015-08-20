@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1995, 1996, 1997  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 2000-2013	    The R Core Team
+ *  Copyright (C) 2000-2014	    The R Core Team
  *  Copyright (C) 2005		    The R Foundation
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -721,7 +721,10 @@ SEXP attribute_hidden complex_math2(SEXP call, SEXP op, SEXP args, SEXP env)
     PROTECT(sa = coerceVector(CAR(args), CPLXSXP));
     PROTECT(sb = coerceVector(CADR(args), CPLXSXP));
     na = XLENGTH(sa); nb = XLENGTH(sb);
-    if ((na == 0) || (nb == 0)) return(allocVector(CPLXSXP, 0));
+    if ((na == 0) || (nb == 0)) {
+        UNPROTECT(2);
+        return(allocVector(CPLXSXP, 0));
+    }
     n = (na < nb) ? nb : na;
     PROTECT(sy = allocVector(CPLXSXP, n));
     a = COMPLEX(sa); b = COMPLEX(sb); y = COMPLEX(sy);

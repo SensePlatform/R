@@ -1,9 +1,7 @@
 % File src/library/graphics/man/plot.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2011 R Core Team
+% Copyright 1995-2015 R Core Team
 % Distributed under GPL 2 or later
-
-\newcommand{\sspace}{\ifelse{latex}{\out{~}}{ }}
 
 \name{plot}
 \title{Generic X-Y Plotting}
@@ -72,7 +70,7 @@ plot(x, y, \dots)
   \code{\link{image}}.
 }
 \examples{
-require(stats)
+require(stats) # for lowess, rpois, rnorm
 plot(cars)
 lines(lowess(cars))
 

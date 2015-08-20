@@ -1,7 +1,7 @@
 #  File src/library/tools/R/Rd2txt.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -220,9 +220,9 @@ transformMethod <- function(i, blocks, Rdfile) {
 	    blocks <- rewriteBlocks()
 	} else {
             chars[char] <- "!"
-	    blocks <- rewriteBlocks()            
+	    blocks <- rewriteBlocks()
         }
-        
+
 	findClose(j)
 	chars[char] <- ""
 	blocks[j] <- editblock(blocks[[j]],
@@ -473,13 +473,6 @@ Rd2txt <-
         psub1("\\s*$", "", x)
     }
 
-    striptitle <- function(text) {
-        text <- fsub("\\", "", text)
-        text <- fsub("---", "_", text)
-        text <- fsub("--", "-", text)
-        text
-    }
-
     ## underline via backspacing
     txt_header <- function(header) {
         opts <- Rd2txt_options()
@@ -606,18 +599,28 @@ Rd2txt <-
                        writeQ(block, tag, quote="\\sQuote")
                    else writeContent(block,tag)
                },
-               "\\email"=  put("<email: ",
-                               gsub("\n", "", paste(as.character(block), collapse="")),
-                               ">"),
-               "\\url"= put("<URL: ",
-                              gsub("\n", "", paste(as.character(block), collapse="")),
-                              ">") ,
-               "\\href"= {
+               "\\email" = {
+                   put("<email: ",
+                       trimws(gsub("\n", "",
+                                   paste(as.character(block),
+                                         collapse=""))),
+                       ">")
+               },
+               "\\url" = {
+                   put("<URL: ",
+                       trimws(gsub("\n", "",
+                                   paste(as.character(block),
+                                         collapse=""))),
+                       ">")
+               },
+               "\\href" = {
                    opts <- Rd2txt_options()
                    writeContent(block[[2L]], tag)
                    if (opts$showURLs)
   			put(" (URL: ",
-  			    gsub("\n", "", paste(as.character(block[[1L]]), collapse="")),
+  			    trimws(gsub("\n", "",
+                                        paste(as.character(block[[1L]]),
+                                              collapse=""))),
   			    ")")
                },
                "\\Sexpr"= put(as.character.Rd(block, deparse=TRUE)),

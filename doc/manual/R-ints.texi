@@ -1115,8 +1115,8 @@ functions are defined and also in file @file{size.c} which needs access
 to the sizes of the internal structures.)
 
 For background papers see
-@uref{http://www.stat.uiowa.edu/~luke/R/barrier.html} and
-@uref{http://www.stat.uiowa.edu/~luke/R/gengcnotes.html}.
+@uref{http://homepage.stat.uiowa.edu/~luke/R/barrier.html} and
+@uref{http://homepage.stat.uiowa.edu/~luke/R/gengcnotes.html}.
 
 @node Serialization Formats, Encodings for CHARSXPs, The write barrier, R Internal Structures
 @section Serialization Formats
@@ -1480,7 +1480,7 @@ only the visible methods will be cached.
 @subsection Mechanics of S4 dispatch
 
 This subsection does not discuss how S4 methods are chosen: see
-@uref{http://@/developer.@/r-project.org/howMethodsWork.pdf}.
+@uref{https://@/developer.@/r-project.org/howMethodsWork.pdf}.
 
 For all but primitive functions, setting a method on an existing
 function that is not itself S4 generic creates a new object in the
@@ -1764,36 +1764,26 @@ regarded as a variable created by the user.
 chosen to be loaded `on demand' rather than linked as dynamic libraries
 or incorporated into the main executable/dynamic library.
 
-For a few of these (e.g.@: @code{vfonts}) the issue is size: the
-database for the Hershey fonts is included in the C code of the module
-and was at one time an appreciable part of the codebase for a rarely
-used feature.  However, for most of the modules the motivation has been
-the amount of (often optional) code they will bring in via libraries to
-which they are linked.
+For the remaining modules the motivation has been the amount of (often
+optional) code they will bring in @emph{via} libraries to which they are
+linked.
 
 @table @asis
 
 @item @code{internet}
 The internal HTTP and FTP clients and socket support, which link to
-system-specific support libraries.
+system-specific support libraries.  This may load @code{libcurl} and on
+Windows will load @file{wininet.dll} and @file{ws2_32.dll}.
 
 @item @code{lapack}
 The code which makes use of the LAPACK library, and is linked to
 @file{libRlapack} or an external LAPACK library.
-
-@item @code{vfonts}
-The Hershey font databases and the code to draw with them.
 
 @item @code{X11}
 (Unix-alikes only.)  The @code{X11()}, @code{jpeg()}, @code{png()} and
 @code{tiff()} devices. These are optional, and links to some or all of
 the @code{X11}, @code{pango}, @code{cairo}, @code{jpeg}, @code{libpng}
 and @code{libtiff} libraries.
-
-@item @file{internet2.dll}
-(Windows only.)  An alternative version of the internet access routines,
-compiled against Internet Explorer internals (and so loads
-@file{wininet.dll} and @file{wsock32.dll}).
 @end table
 
 @node Visibility, Lazy loading, Modules, R Internal Structures
@@ -2453,7 +2443,7 @@ top-level @file{po} directory.
 @section OS X GUI
 
 This is handled separately: see
-@uref{http://developer.r-project.org/Translations.html}.
+@uref{https://developer.r-project.org/Translations30.html}.
 
 
 @node Updating,  , OS X GUI, Internationalization in the R sources
@@ -2710,8 +2700,8 @@ that in S and whose @R{} code@footnote{The C code is in files
 @pkg{graphics}) and one implemented in package @pkg{grid}.
 
 Some notes on the historical changes can be found at
-@uref{http://www.stat.auckland.ac.nz/@/~paul/@/R/basegraph.html} and
-@uref{http://www.stat.auckland.ac.nz/@/~paul/R/@/graphicsChanges.html}.
+@uref{https://www.stat.auckland.ac.nz/@/~paul/@/R/basegraph.html} and
+@uref{https://www.stat.auckland.ac.nz/@/~paul/R/@/graphicsChanges.html}.
 
 At the lowest level is a graphics device, which manages a plotting
 surface (a screen window or a representation to be written to a file).
@@ -3262,7 +3252,7 @@ returned.  C functions @code{doMouseEvent} and @code{doKeybd} are
 provided to call the R event handlers @code{onMouseDown},
 @code{onMouseMove}, @code{onMouseUp}, and @code{onKeybd} and set
 @code{eventEnv$result} during this step.  Finally, @code{initEvent} is
-called again with @code{init=false} to inform the the devices that the
+called again with @code{init=false} to inform the devices that the
 loop is done, and the result is returned to the user.
 
 @node Specific devices,  , Graphics events, Graphics devices
@@ -3813,7 +3803,7 @@ Default: @samp{default} (which checks only tarballs, and checks in the
 If true, make use of the @CRANpkg{codetools} package, which provides a
 detailed analysis of visibility of objects (but may give false
 positives).
-Default: true.
+Default: true (if recommended packages are installed).
 @item _R_CHECK_USE_INSTALL_LOG_
 If true, record the output from installing a package as part of its
 check to a log file (@file{00install.out} by default), even when running
@@ -3821,8 +3811,8 @@ interactively.
 Default: true.
 @item _R_CHECK_VIGNETTES_NLINES_
 Maximum number of lines to show at the bottom of the output when reporting
-errors in running vignettes.
-Default: 10.
+errors in running or re-building vignettes.
+Default: 10 for running, 25 for re-building.
 @item _R_CHECK_CODOC_S4_METHODS_
 Control whether @code{codoc()} testing is also performed on S4 methods.
 Default: true.
@@ -4079,6 +4069,21 @@ If set, check code usage (via @CRANpkg{codetools}) directly on the
 package namespace without loading and attaching the package and its
 suggests and enhances.
 Default: true (and true for CRAN submission checks).
+
+@item _R_CHECK_EXIT_ON_FIRST_ERROR_
+If set to a true value, the check will exit on the first error.
+Default: false.
+
+@item _R_CHECK_S3_METHODS_NOT_REGISTERED_
+If set to a true value, report (apparent) S3 methods exported but not
+registered.
+Default: false (but true for CRAN submission checks).
+
+@item _R_CHECK_OVERWRITE_REGISTERED_S3_METHODS_
+If set to a true value, report already registered S3 methods in
+base/recommended packages which are overwritten when this package's
+namespace is loaded. 
+Default: false (but true for CRAN submission checks).
 @end vtable
 
 CRAN's submission checks use something like
@@ -4101,6 +4106,8 @@ _R_CHECK_DEPRECATED_DEFUNCT_=TRUE
 _R_CHECK_REPLACING_IMPORTS_=TRUE
 _R_CHECK_SCREEN_DEVICE_=stop
 _R_CHECK_TOPLEVEL_FILES_=TRUE
+_R_CHECK_S3_METHODS_NOT_REGISTERED_=TRUE
+_R_CHECK_OVERWRITE_REGISTERED_S3_METHODS_=TRUE
 @end example
 
 @noindent
@@ -4442,7 +4449,7 @@ introduce `long' versions @code{xlength} and @code{XLENGTH} which return
 @code{R_xlen_t} values.
 
 
-See also @uref{http://www.cs.uiowa.edu/~luke/talks/useR10.pdf}.
+See also @uref{http://homepage.cs.uiowa.edu/~luke/talks/useR10.pdf}.
 
 @node Large matrices,  , 64-bit types, Current and future directions
 @section Large matrices

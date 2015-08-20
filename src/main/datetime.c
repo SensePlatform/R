@@ -1,6 +1,6 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
- *  Copyright (C) 2000-2014  The R Core Team.
+ *  Copyright (C) 2000-2015  The R Core Team.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,10 +39,18 @@
 
 #include <Rmath.h> // Rexp10
 
-// some other header, e.g. math.h, might define it
-#if defined(__GLIBC__) && !defined(_BSD_SOURCE)
-// to get tm_zone, tm_gmtoff defined
-# define _BSD_SOURCE
+// to get tm_zone, tm_gmtoff defined in glibc.
+// some other header, e.g. math.h, might define the macro.
+#if defined HAVE_FEATURES_H
+# include <features.h>
+# ifdef __GNUC_PREREQ
+#  if __GNUC_PREREQ(2,20) && !defined(_DEFAULT_SOURCE_)
+#   define _DEFAULT_SOURCE 1
+#  endif
+# endif
+#endif
+#if defined(HAVE_GLIBC2) && !defined(_DEFAULT_SOURCE_) && !defined(_BSD_SOURCE)
+# define _BSD_SOURCE 1
 #endif
 #include <time.h>
 
@@ -85,6 +93,8 @@ known OS with 64-bit time_t and complete tables is Linux.
 # define HAVE_TM_GMTOFF 1
 # undef MKTIME_SETS_ERRNO
 # define MKTIME_SETS_ERRNO
+# undef HAVE_WORKING_64BIT_MKTIME
+# define HAVE_WORKING_64BIT_MKTIME 1
 #else
 
 typedef struct tm stm;
@@ -293,14 +303,14 @@ static Rboolean have_broken_mktime(void)
 }
 
 #ifndef HAVE_POSIX_LEAPSECONDS
-/* There have been 25 leapseconds: see .leap.seconds in R
+/* There have (2015/07) been 26 leapseconds: see .leap.seconds in R
  */
-static int n_leapseconds = 25;
+static int n_leapseconds = 26;
 static const time_t leapseconds[] =
 {  78796800, 94694400,126230400,157766400,189302400,220924800,252460800,
   283996800,315532800,362793600,394329600,425865600,489024000,567993600,
   631152000,662688000,709948800,741484800,773020800,820454400,867715200,
-   915148800,1136073600,1230768000,1341100800};
+   915148800,1136073600,1230768000,1341100800,1435708800};
 #endif
 
 static double guess_offset (stm *tm)
@@ -764,7 +774,7 @@ SEXP attribute_hidden do_asPOSIXct(SEXP call, SEXP op, SEXP args, SEXP env)
     SEXP stz, x, ans;
     R_xlen_t n = 0, nlen[9];
     int isgmt = 0, settz = 0;
-    char oldtz[20] = "";
+    char oldtz[1001] = "";
     const char *tz = NULL;
     stm tm;
     double tmp;
@@ -856,7 +866,7 @@ SEXP attribute_hidden do_formatPOSIXlt(SEXP call, SEXP op, SEXP args, SEXP env)
     R_xlen_t n = 0, m, N, nlen[9];
     int UseTZ, settz = 0;
     char buff[300];
-    char oldtz[20] = "";
+    char oldtz[1001] = "";
     stm tm;
 
     checkArity(op, args);
@@ -982,11 +992,16 @@ SEXP attribute_hidden do_formatPOSIXlt(SEXP call, SEXP op, SEXP args, SEXP env)
 			strcat(buf2, p+nused);
 		    }
 		}
+		// The overflow behaviour is not determined by C99.
+		// We assume truncation, and ensure termination.
 #ifdef USE_INTERNAL_MKTIME
 		R_strftime(buff, 256, buf2, &tm);
 #else
 		strftime(buff, 256, buf2, &tm);
 #endif
+		buff[256] = '\0';
+		// Now assume tzone abbreviated name is < 40 bytes,
+		// but they are currently 3 or 4 bytes.
 		if(UseTZ) {
 		    if(LENGTH(x) >= 10) {
 			const char *p = CHAR(STRING_ELT(VECTOR_ELT(x, 9), i));
@@ -1006,8 +1021,8 @@ SEXP attribute_hidden do_formatPOSIXlt(SEXP call, SEXP op, SEXP args, SEXP env)
 	    }
 	}
     }
-    UNPROTECT(2);
     if(settz) reset_tz(oldtz);
+    UNPROTECT(2);
     return ans;
 }
 
@@ -1018,7 +1033,7 @@ SEXP attribute_hidden do_strptime(SEXP call, SEXP op, SEXP args, SEXP env)
     int invalid, isgmt = 0, settz = 0, offset;
     stm tm, tm2, *ptm = &tm;
     const char *tz = NULL;
-    char oldtz[20] = "";
+    char oldtz[1001] = "";
     double psecs = 0.0;
     R_xlen_t n, m, N;
 
@@ -1213,7 +1228,8 @@ SEXP attribute_hidden do_D2POSIXlt(SEXP call, SEXP op, SEXP args, SEXP env)
     SET_STRING_ELT(klass, 0, mkChar("POSIXlt"));
     SET_STRING_ELT(klass, 1, mkChar("POSIXt"));
     classgets(ans, klass);
-    setAttrib(ans, install("tzone"), mkString("UTC"));
+    SEXP s_tzone = install("tzone");
+    setAttrib(ans, s_tzone, mkString("UTC"));
     SEXP nm = getAttrib(x, R_NamesSymbol);
     if(nm != R_NilValue) setAttrib(VECTOR_ELT(ans, 5), R_NamesSymbol, nm);
     UNPROTECT(4);

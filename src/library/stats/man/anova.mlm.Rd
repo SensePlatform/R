@@ -1,9 +1,7 @@
 % File src/library/stats/man/anova.mlm.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2007 R Core Team
+% Copyright 1995-2014 R Core Team
 % Distributed under GPL 2 or later
-
-\newcommand{\sspace}{\ifelse{latex}{\out{~}}{ }}
 
 \name{anova.mlm}
 \alias{anova.mlm}
@@ -24,7 +22,7 @@
 \arguments{
   \item{object}{an object of class \code{"mlm"}.}
   \item{\dots}{further objects of class \code{"mlm"}.}
-  \item{test}{choice of test statistic (see below).}
+  \item{test}{choice of test statistic (see below).  Can be abbreviated.}
   \item{Sigma}{(only relevant if  \code{test == "Spherical"}).  Covariance
     matrix assumed proportional to \code{Sigma}.}
   \item{T}{transformation matrix.  By default computed from \code{M} and

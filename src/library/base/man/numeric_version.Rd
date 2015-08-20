@@ -1,6 +1,6 @@
 % File src/library/base/man/numeric_version.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2013 R Core Team
+% Copyright 1995-2014 R Core Team
 % Distributed under GPL 2 or later
 
 \name{numeric_version}
@@ -15,6 +15,7 @@
 \alias{getRversion}
 % Methods.
 \alias{[.numeric_version}
+\alias{[<-.numeric_version}
 \alias{[[.numeric_version}
 \alias{[[<-.numeric_version}
 \alias{Ops.numeric_version}
@@ -27,6 +28,7 @@
 \alias{duplicated.numeric_version}
 \alias{format.numeric_version}
 \alias{is.na.numeric_version}
+\alias{is.na<-.numeric_version}
 \alias{print.numeric_version}
 \alias{rep.numeric_version}
 %\alias{sort.numeric_version}

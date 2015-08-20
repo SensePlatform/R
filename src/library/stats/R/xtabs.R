@@ -1,7 +1,7 @@
 #  File src/library/stats/R/xtabs.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ xtabs <- function(formula = ~., data = parent.frame(), subset, sparse = FALSE,
     if (is.matrix(eval(m$data, parent.frame())))
 	m$data <- as.data.frame(data)
     m$... <- m$exclude <- m$drop.unused.levels <- m$sparse <- NULL
+    ## need stats:: for non-standard evaluation
     m[[1L]] <- quote(stats::model.frame)
     mf <- eval(m, parent.frame())
     if(length(formula) == 2L) {
@@ -54,7 +55,7 @@ xtabs <- function(formula = ~., data = parent.frame(), subset, sparse = FALSE,
                         exclude=NULL)
 	u[ , drop = drop.unused.levels]
     })
-    if(!sparse) { ## identical to stats::xtabs
+    if(!sparse) {
 	x <-
 	    if(is.null(y))
 		do.call("table", by)
@@ -66,7 +67,7 @@ xtabs <- function(formula = ~., data = parent.frame(), subset, sparse = FALSE,
 		      dim = c(dim(z[[1L]]), length(z)),
 		      dimnames = c(dimnames(z[[1L]]), list(names(z))))
 	    }
-	x[is.na(x)] <- 0
+	x[is.na(x)] <- 0L
 	class(x) <- c("xtabs", "table")
 	attr(x, "call") <- match.call()
 	x

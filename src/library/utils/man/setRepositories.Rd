@@ -1,9 +1,7 @@
 % File src/library/utils/man/setRepositories.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2014 R Core Team
+% Copyright 1995-2015 R Core Team
 % Distributed under GPL 2 or later
-
-\newcommand{\sspace}{\ifelse{latex}{\out{~}}{ }}
 
 \name{setRepositories}
 \alias{setRepositories}
@@ -30,12 +28,14 @@ setRepositories(graphics = getOption("menu.graphics"),
   The default list of known repositories is stored in the file
   \file{\var{\link{R_HOME}}/etc/repositories}.
   That file can be edited for a site, or a user can have a personal copy
-  in \file{\var{HOME}/.R/repositories} which will take precedence.
+  in the file pointed to by the environment variable
+  \env{R_REPOSITORIES}, or if this is unset or does not exist,
+  in \file{\var{HOME}/.R/repositories}, which will take precedence.
 
   A Bioconductor mirror can be selected by setting
   \code{\link{options}("BioC_mirror")}, e.g.\sspace{}via
-  \code{\link{chooseBioCmirror}} the default value is
-  \samp{"http://www.bioconductor.org"}.
+  \code{\link{chooseBioCmirror}} --- the default value is
+  \samp{"http://bioconductor.org"}.
 
   The items that are preselected are those that are currently in
   \code{options("repos")} plus those marked as default in the
@@ -46,6 +46,7 @@ setRepositories(graphics = getOption("menu.graphics"),
   (e.g., only source packages or not OS X binary packages).
   Further, for binary packages some repositories (notably R-Forge) only
   offer packages for the current or recent versions of \R.
+  (Type \code{"both"} is equivalent to \code{"source"}.)
 
   Repository \samp{CRAN} is treated specially: the value is taken from
   the current setting of \code{getOption("repos")} if this has an
@@ -53,6 +54,11 @@ setRepositories(graphics = getOption("menu.graphics"),
 
   This function requires the \R session to be interactive unless
   \code{ind} is supplied.
+
+  Some of the entries have \code{https} versions which use
+  \samp{https://} for access, so if selected need an \R build which
+  supports this.  (Choosing the \code{https} version provides some
+  guarantees on the identity of the site.)
 }
 \note{
   This does \strong{not} set the list of repositories at startup: to do

@@ -15,9 +15,9 @@
 #  A copy of the GNU General Public License is available at
 #  http://www.r-project.org/Licenses/
 
-### JRins.R Rversion srcdir MDISDI HelpStyle Internet Producer ISDIR
+### JRins.R Rversion srcdir MDISDI HelpStyle Producer ISDIR
 
-.make_R.iss <- function(RW, srcdir, MDISDI=0, HelpStyle=1, Internet=0,
+.make_R.iss <- function(RW, srcdir, MDISDI=0, HelpStyle=1,
                        Producer = "R-core", ISDIR)
 {
     have32bit <- file_test("-d", file.path(srcdir, "bin", "i386"))
@@ -86,7 +86,6 @@
     lines <- readLines("code.iss")
     lines <- gsub("@MDISDI@", MDISDI, lines)
     lines <- gsub("@HelpStyle@", HelpStyle, lines)
-    lines <- gsub("@Internet@", Internet, lines)
     writeLines(lines, con)
 
     writeLines(c("", "", "[Files]"), con)
@@ -110,8 +109,38 @@
 	else "main"
 
         if (component == "x64" && !have64bit) next
+        
+        # Skip the /bin front ends, they are installed below
+        if (grepl("bin/R.exe$", f)) next
+        if (grepl("bin/Rscript.exe$", f)) next
+        
+        f <- gsub("/", "\\", f, fixed = TRUE)   
+        
+        # The /bin front ends are installed according to this rule:
+        #  - If x64 is installed, use that version of Rfe
+        #  - Otherwise, use the i386 version
+        if (grepl("Rfe\\.exe$", f)) {
+            if (component == "i386") 
+                comp <- "i386 and not x64"
+            else 
+            	comp <- component
+            bindir <- gsub("/", "\\", dirname(dir), fixed = TRUE)
+            cat('Source: "', srcdir, '\\', f, '"; ',
+                'DestDir: "{app}', bindir, '"; ',
+                'DestName: "R.exe"; ',
+                'Flags: ignoreversion; ',
+                'Components: ', comp,
+                '\n',
+                file = con, sep = "")   
+            cat('Source: "', srcdir, '\\', f, '"; ',
+                'DestDir: "{app}', bindir, '"; ',
+                'DestName: "Rscript.exe"; ',
+                'Flags: ignoreversion; ',
+                'Components: ', comp,
+                '\n',
+                file = con, sep = "")            
+        }
 
-        f <- gsub("/", "\\", f, fixed = TRUE)
         cat('Source: "', srcdir, '\\', f, '"; ',
             'DestDir: "{app}', dir, '"; ',
             'Flags: ignoreversion; ',
@@ -120,6 +149,9 @@
         if(f %in% c("etc\\Rprofile.site", "etc\\Rconsole"))
             cat("; AfterInstall: EditOptions()", file = con)
         cat("\n", file = con)
+        
+
+        
     }
 
     close(con)

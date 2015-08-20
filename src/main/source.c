@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Langage for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 2001-2013   The R Core Team
+ *  Copyright (C) 2001-2015   The R Core Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -126,7 +126,7 @@ static SEXP tabExpand(SEXP strings)
     return result;
 }
     	
-void parseError(SEXP call, int linenum)
+void NORET parseError(SEXP call, int linenum)
 {
     SEXP context;
     int len, width;
@@ -276,7 +276,12 @@ SEXP attribute_hidden do_parse(SEXP call, SEXP op, SEXP args, SEXP env)
 	}
 	if(!con->canread) error(_("cannot read from this connection"));
 	s = R_ParseConn(con, num, &status, source);
-	if(!wasopen) {endcontext(&cntxt); con->close(con);}
+	if(!wasopen) {
+	    PROTECT(s);
+	    endcontext(&cntxt);
+	    con->close(con);
+	    UNPROTECT(1);
+	}
 	if (status != PARSE_OK) parseError(call, R_ParseError);
     }
     else {

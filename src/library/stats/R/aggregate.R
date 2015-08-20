@@ -1,7 +1,7 @@
 #  File src/library/stats/R/aggregate.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -50,17 +50,17 @@ function(x, by, FUN, ..., simplify = TRUE)
         ind <- which(!nzchar(nam))
         names(by)[ind] <- paste("Group", ind, sep = ".")
     }
- 
+
     nrx <- NROW(x)
 
-    if(any(unlist(lapply(by, length)) != nrx))
+    if(any(lengths(by) != nrx))
         stop("arguments must have same length")
-	
+
     y <- as.data.frame(by, stringsAsFactors = FALSE)
     keep <- complete.cases(by)
     y <- y[keep, , drop = FALSE]
     x <- x[keep, , drop = FALSE]
-    
+
     nrx <- NROW(x)
 
     # Generate a group identifier vector with integers and dots.
@@ -68,12 +68,13 @@ function(x, by, FUN, ..., simplify = TRUE)
            y <- as.integer(as.factor(x))
            z <- gsub(" ", "0", format(y, scientific = FALSE)) # for right sort order
            return(z)
-    }
-    if (ncol(y))
-	grp <- rank(do.call(paste, c(lapply(rev(y), ident), list(sep = "."))), 
-                ties.method = "min")
-    else
-	grp <- integer(nrx)
+       }
+    grp <- if(ncol(y)) {
+        grp <- lapply(rev(y), ident)
+        names(grp) <- NULL
+	do.call(paste, c(grp, list(sep = ".")))
+    } else
+	integer(nrx)
 
     y <- y[match(sort(unique(grp)), grp, 0L), , drop = FALSE]
     nry <- NROW(y)
@@ -83,7 +84,7 @@ function(x, by, FUN, ..., simplify = TRUE)
                     ## the transpose of what we need ...
                     ans <- lapply(X = split(e, grp), FUN = FUN, ...)
                     if(simplify &&
-                       length(len <- unique(sapply(ans, length))) == 1L) {
+                       length(len <- unique(lengths(ans))) == 1L) {
                         ## this used to lose classes
                         if(len == 1L) {
                             cl <- lapply(ans, oldClass)
@@ -128,6 +129,7 @@ function(formula, data, FUN, ..., subset, na.action = na.omit)
     if(is.matrix(eval(m$data, parent.frame())))
         m$data <- as.data.frame(data)
     m$... <- m$FUN <- NULL
+    ## need stats:: for non-standard evaluation
     m[[1L]] <- quote(stats::model.frame)
 
     if (formula[[2L]] == ".") {

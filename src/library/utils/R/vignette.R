@@ -1,7 +1,7 @@
 #  File src/library/utils/R/vignette.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -61,7 +61,7 @@ vignette <-
         title <- if(nrow(vinfo)) {
             paste(vinfo[, "Title"],
                   paste0(rep.int("(source", nrow(vinfo)),
-                        ifelse(vinfo[, "PDF"] != "",
+                        ifelse(nzchar(vinfo[, "PDF"]),
                                paste0(", ",
                                       tools::file_ext(vinfo[, "PDF"])),
                                ""),
@@ -92,7 +92,15 @@ function(x, ...)
 {
     if(nzchar(out <- x$PDF)) {
         ext <- tools::file_ext(out)
-        out <- file.path(x$Dir, "doc", out)
+	if (tolower(ext) == "html") 
+	    port <- tools::startDynamicHelp(NA)
+	else
+	    port <- 0L
+	if (port > 0L)
+	    out <- sprintf("http://127.0.0.1:%d/library/%s/doc/%s", 
+	                   port, basename(x$Dir), out)
+	else
+	    out <- file.path(x$Dir, "doc", out)
         if(tolower(ext) == "pdf") {
             pdfviewer <- getOption("pdfviewer")
             if(identical(pdfviewer, "false")) {

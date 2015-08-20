@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1997--2013  The R Core Team
+ *  Copyright (C) 1997--2014  The R Core Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -143,8 +143,6 @@ extern void * __libc_stack_end;
 #endif
 
 int R_running_as_main_program = 0;
-
-extern void BindDomain(char *R_Home);
 
 /* In src/main/main.c, to avoid inlining */
 extern uintptr_t dummy_ii(void);

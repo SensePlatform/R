@@ -30,8 +30,6 @@
  * package used to be called "lattice"
  */
 
-extern int gridRegisterIndex;
-
 void getDeviceSize(pGEDevDesc dd, double *devWidthCM, double *devHeightCM) 
 {
     double left, right, bottom, top;
@@ -172,7 +170,7 @@ SEXP doSetViewport(SEXP vp,
 	 * NOTE that we are deliberately using defineVar to
 	 * assign the vp SEXP itself, NOT a copy.
 	 */
-	defineVar(install(CHAR(STRING_ELT(VECTOR_ELT(vp, VP_NAME), 0))),
+	defineVar(installChar(STRING_ELT(VECTOR_ELT(vp, VP_NAME), 0)),
 		  vp, 
 		  VECTOR_ELT(parent, PVP_CHILDREN));
     }
@@ -290,6 +288,13 @@ SEXP doSetViewport(SEXP vp,
 	xx2 = REAL(parentClip)[2];
 	yy2 = REAL(parentClip)[3];
 	UNPROTECT(1);
+        /* If we are revisiting a viewport that inherits a clip
+         * region from a parent viewport, we may need to reset 
+         * the clip region (at worst, we generate a redundant clip)
+         */
+        if (!pushing) {
+	    GESetClip(xx1, yy1, xx2, yy2, dd);
+        }
     }
     PROTECT(currentClip = allocVector(REALSXP, 4));
     REAL(currentClip)[0] = xx1;
@@ -407,10 +412,11 @@ static SEXP findInChildren(SEXP name, SEXP strict, SEXP children, int depth)
     PROTECT(result);
     while (count < n && !found) {
 	result = findViewport(name, strict,
-			      findVar(install(CHAR(STRING_ELT(childnames, count))),
-				      children),
+			      PROTECT(findVar(installChar(STRING_ELT(childnames, count)),
+				      children)),
 			      depth);
 	found = INTEGER(VECTOR_ELT(result, 0))[0] > 0;
+	UNPROTECT(1);
 	count = count + 1;
     }
     if (!found) {
@@ -460,7 +466,7 @@ static SEXP findViewport(SEXP name, SEXP strict, SEXP vp, int depth)
 		       /*
 			* Does this do inherits=FALSE?
 			*/
-		       findVar(install(CHAR(STRING_ELT(name, 0))), 
+		       findVar(installChar(STRING_ELT(name, 0)),
 			       viewportChildren(vp)));
     } else {
 	/*
@@ -562,7 +568,7 @@ static SEXP findvppathInChildren(SEXP path, SEXP name,
     PROTECT(result);
     while (count < n && !found) {
 	SEXP vp, newpathsofar;
-	PROTECT(vp = findVar(install(CHAR(STRING_ELT(childnames, count))),
+	PROTECT(vp = findVar(installChar(STRING_ELT(childnames, count)),
 			     children));
 	PROTECT(newpathsofar = growPath(pathsofar,
 					VECTOR_ELT(vp, VP_NAME)));
@@ -613,7 +619,7 @@ static SEXP findvppath(SEXP path, SEXP name, SEXP strict,
 		       /*
 			* Does this do inherits=FALSE?
 			*/
-		       findVar(install(CHAR(STRING_ELT(name, 0))), 
+		       findVar(installChar(STRING_ELT(name, 0)),
 			       viewportChildren(vp)));
     } else {
 	result = findvppathInChildren(path, name, strict, pathsofar,
@@ -709,9 +715,9 @@ SEXP L_unsetviewport(SEXP n)
      * in the "Writing R Extensions" manual, but the compiler didn't
      * like CAR(t) as an lvalue.
      */
+    PROTECT(gvp); PROTECT(newvp);
     {
 	SEXP fcall, false, t;
-	PROTECT(gvp); PROTECT(newvp);
 	PROTECT(false = allocVector(LGLSXP, 1));
 	LOGICAL(false)[0] = FALSE;
 	PROTECT(fcall = lang4(install("remove"), 
@@ -724,7 +730,7 @@ SEXP L_unsetviewport(SEXP n)
 	t = CDR(t);
 	SET_TAG(t, install("inherits")); 
 	eval(fcall, R_gridEvalEnv); 
-	UNPROTECT(4);
+	UNPROTECT(2); /* false, fcall */
     }
     /* Get the current device size 
      */
@@ -760,6 +766,7 @@ SEXP L_unsetviewport(SEXP n)
      * to part of the (global) grid state
      */
     SET_VECTOR_ELT(gvp, PVP_PARENT, R_NilValue);
+    UNPROTECT(2); /* gvp, newvp */
     return R_NilValue;
 }
 
@@ -3115,6 +3122,8 @@ static SEXP gridText(SEXP label, SEXP x, SEXP y, SEXP hjust, SEXP vjust,
 	txt = coerceVector(txt, EXPRSXP);
     else if (!isExpression(txt))
 	txt = coerceVector(txt, STRSXP);
+    UNPROTECT(1);
+    PROTECT(txt);
     if (overlapChecking || !draw) {
 	bounds = (LRect *) R_alloc(nx, sizeof(LRect));
     }
@@ -3516,8 +3525,8 @@ SEXP L_locator() {
 	REAL(answer)[0] = NA_REAL;
 	REAL(answer)[1] = NA_REAL;	
     }
-    UNPROTECT(1);
     GEMode(0, dd);
+    UNPROTECT(1);
     return answer;
 }
 

@@ -1,6 +1,6 @@
 % File src/library/utils/man/object.size.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2013 R Core Team
+% Copyright 1995-2014 R Core Team
 % Distributed under GPL 2 or later
 
 \name{object.size}
@@ -24,7 +24,7 @@ object.size(x)
   \item{units}{The units to be used in printing the size.  Allowed
     values are \code{"b"}, \code{"Kb"}, \code{"Mb"}, \code{"Gb"},
     \code{"B"}, \code{"KB"}, \code{"MB"}, \code{"GB"}, and \code{"auto"}
-    (see \sQuote{Details}).} 
+    (see \sQuote{Details}).  Can be abbreviated.} 
   \item{\dots}{Arguments to be passed to or from other methods.}
 }
 \details{

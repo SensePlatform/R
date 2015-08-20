@@ -1,7 +1,7 @@
 #  File src/library/base/R/dynload.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -141,7 +141,7 @@ function(x, ...)
     ## of routines in any category. Then fill the column with ""
     ## and then the actual entries.
 
-    n <- vapply(x, length, 1L)
+    n <- lengths(x)
     x <- x[n > 0]
     n <- max(n)
     d <- list()
@@ -162,10 +162,8 @@ function(x, ...)
 getCallingDLLe <- function(e)
 {
     if (is.null(env <- e$".__NAMESPACE__.")) env <- baseenv()
-    if(exists("DLLs", envir = env) &&
-       length(env$DLLs))
-        return(env$DLLs[[1L]])
-    NULL
+    if(!is.null(Ds <- get0("DLLs", envir = env)) && length(Ds))
+	Ds[[1L]] ## else NULL
 }
 
 getCallingDLL <-
@@ -180,17 +178,10 @@ function(f = sys.function(-1), doStop = FALSE)
             return(NULL)
     }
 
-    ## Please feel free to replace with a more encapsulated way to do this.
-    if (is.null(env <- e$".__NAMESPACE__.")) env <- baseenv()
-    if(exists("DLLs", envir = env) && length(env$DLLs))
-        return(env$DLLs[[1L]])
-    else {
-        if(doStop)
-            stop("looking for DLL for native routine call, but no DLLs in namespace of call")
-        else
-            NULL
-    }
-    NULL
+    if(is.null(r <- getCallingDLLe(e)) && doStop)
+	stop("looking for DLL for native routine call, but no DLLs in namespace of call")
+    ## else
+    r
 }
 
 print.DLLInfo <- function(x, ...)

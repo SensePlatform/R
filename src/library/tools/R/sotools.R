@@ -1,7 +1,7 @@
 #  File src/library/tools/R/sotools.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 2011-2014 The R Core Team
+#  Copyright (C) 2011-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ read_symbols_from_object_file <- function(f)
     ## reasonable to assume this on the path
     if(!nzchar(nm <- Sys.which("nm"))) return()
     f <- file_path_as_absolute(f)
-    if(!(file.info(f)$size)) return()
+    if(!(file.size(f))) return()
     s <- strsplit(system(sprintf("%s -Pg %s", shQuote(nm), shQuote(f)),
                          intern = TRUE),
                   " +")
@@ -51,7 +51,7 @@ read_symbols_from_object_file <- function(f)
     tab <- matrix("", nrow = n, ncol = 4L)
     colnames(tab) <- c("name", "type", "value", "size")
     ## Compute desired i and j positions in tab.
-    i <- rep.int(seq_len(n), sapply(s, length))
+    i <- rep.int(seq_len(n), lengths(s))
     j <- unlist(lapply(s, seq_along))
     tab[n * (j - 1L) + i] <- unlist(s)
     tab
@@ -103,6 +103,7 @@ so_symbol_names_table <-
       "linux, Fortran, gfortran, print, _gfortran_st_write",
       "linux, Fortran, gfortran, stop, _gfortran_stop_numeric_f08",
       "linux, Fortran, gfortran, stop, _gfortran_stop_string",
+      "linux, Fortran, gfortran, rand, _gfortran_rand",
 
       "osx, C, gcc, abort, _abort",
       "osx, C, gcc, assert, ___assert_rtn",
@@ -131,6 +132,7 @@ so_symbol_names_table <-
       "osx, Fortran, gfortran, print, __gfortran_st_write",
       "osx, Fortran, gfortran, stop, __gfortran_stop_numeric",
       "osx, Fortran, gfortran, stop, __gfortran_stop_string",
+      "osx, Fortran, gfortran, rand, __gfortran_rand",
 
       "freebsd, C, gcc, abort, abort",
       "freebsd, C, gcc, assert, __assert",
@@ -155,6 +157,7 @@ so_symbol_names_table <-
       "freebsd, Fortran, gfortran, print, _gfortran_st_write",
       "freebsd, Fortran, gfortran, stop, _gfortran_stop_numeric_f08",
       "freebsd, Fortran, gfortran, stop, _gfortran_stop_string",
+      "freebsd, Fortran, gfortran, rand, _gfortran_rand",
 
       ## stdout, stderr do not show up on Solaris
       "solaris, C, solcc, abort, abort",
@@ -183,6 +186,7 @@ so_symbol_names_table <-
       "solaris, Fortran, solf95, stop, __f90_stop_int",
       "solaris, Fortran, solf95, stop, __f90_stop_char",
       "solaris, Fortran, solf95, runtime, abort",
+      "solaris, Fortran, solf95, rand, rand_",
 
       ## Windows statically links libstdc++, libgfortran
       ## only in .o, positions hard-coded in check_so_symbols
@@ -208,7 +212,9 @@ so_symbol_names_table <-
       "windows, C, gcc, rand_r, rand_r",
       "windows, C, gcc, srand, srand",
       "windows, C, gcc, srand48, srand48",
-      "windows, Fortran, gfortran, stop, exit"
+      "windows, Fortran, gfortran, stop, exit",
+      ## next will not show up with static libgfortran
+      "windows, Fortran, gfortran, rand, _gfortran_rand"
       )
 so_symbol_names_table <-
     do.call(rbind,
@@ -415,6 +421,7 @@ format.check_so_symbols <-
 function(x, ...)
 {
     if(!length(x)) return(character())
+    ## <FIXME split.matrix>
     entries <- split.data.frame(x, x[, "osname"])
     objects <- vector("list", length(entries))
     names(objects) <- names(entries)
@@ -468,7 +475,7 @@ if(.Platform$OS.type == "windows") {
             attr(x, "file") <- .file_path_relative_to_dir(so, dir, TRUE)
 
             attr(x, "objects") <-
-                split(rep.int(names(symbols), sapply(symbols, length)),
+                split(rep.int(names(symbols), lengths(symbols)),
                       unlist(symbols))
             class(x) <- "check_so_symbols"
             x
@@ -559,7 +566,7 @@ if(.Platform$OS.type == "windows") {
             x <- x[!is.na(match(x[, "osname"], osnames_in_objects)), , drop = FALSE]
             attr(x, "file") <- .file_path_relative_to_dir(so, dir, TRUE)
             attr(x, "objects") <-
-                split(rep.int(names(symbols), sapply(symbols, length)),
+                split(rep.int(names(symbols), lengths(symbols)),
                       unlist(symbols))
             class(x) <- "check_so_symbols"
             x

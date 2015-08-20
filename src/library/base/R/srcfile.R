@@ -1,7 +1,7 @@
 #  File src/library/base/R/srcfile.R
 #  Part of the R package, http://www.R-project.org
 #
-#  Copyright (C) 1995-2012 The R Core Team
+#  Copyright (C) 1995-2014 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ srcfile <- function(filename, encoding = getOption("encoding"), Enc = "unknown")
     e$filename <- filename
 
     # If filename is a URL, this will return NA
-    e$timestamp <- file.info(filename)[1,"mtime"]
+    e$timestamp <- file.mtime(filename)
 
     if (identical(encoding, "unknown")) encoding <- "native.enc"
     e$encoding <- encoding
@@ -71,11 +71,12 @@ open.srcfile <- function(con, line, ...) {
 	    olddir <- setwd(srcfile$wd)
 	    on.exit(setwd(olddir))
 	}
-	timestamp <- file.info(srcfile$filename)[1,"mtime"]
+	timestamp <- file.mtime(srcfile$filename)
 	if (!is.null(srcfile$timestamp)
 	    && !is.na(srcfile$timestamp)
 	    && ( is.na(timestamp) || timestamp != srcfile$timestamp) )
-            warning(gettextf("Timestamp of %s has changed", sQuote(srcfile$filename)),
+            warning(gettextf("Timestamp of %s has changed",
+                             sQuote(srcfile$filename)),
                     call. = FALSE, domain = NA)
 	if (is.null(srcfile$encoding)) encoding <- getOption("encoding")
 	else encoding <- srcfile$encoding
@@ -213,14 +214,20 @@ srcref <- function(srcfile, lloc) {
     structure(as.integer(lloc), srcfile=srcfile, class="srcref")
 }
 
-as.character.srcref <- function(x, useSource = TRUE, ...)
+as.character.srcref <- function(x, useSource = TRUE, to = x, ...)
 {
     srcfile <- attr(x, "srcfile")
+    if (!missing(to)) {
+        if (!identical(srcfile, attr(to, "srcfile")))
+    	    stop("'x' and 'to' must refer to same file")
+    	x[c(3L, 4L, 6L, 8L)] <- to[c(3L, 4L, 6L, 8L)]
+    }	
     if (!is.null(srcfile) && !inherits(srcfile, "srcfile")) {
        cat("forcing class on") ## debug
 	print(str(srcfile))
        class(srcfile) <- c("srcfilealias", "srcfile")
     }
+    
     if (useSource) {
     	if (inherits(srcfile, "srcfilecopy") || inherits(srcfile, "srcfilealias"))
     	    lines <- try(getSrcLines(srcfile, x[7L], x[8L]), TRUE)

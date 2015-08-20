@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
- *  Copyright (C) 2004-7  The R Foundation
- *  Copyright (C) 2013	  The R Core Team
+ *  Copyright (C) 2004-2007  The R Foundation
+ *  Copyright (C) 2013-2015  The R Core Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -110,9 +110,8 @@ Rboolean haveListeningDev()
     {
 	for(int i = 1; i < NumDevices(); i++)
 	{
-	    gd = GEgetDevice(i);
-	    dd = gd->dev;
-	    if(dd->gettingEvent){
+	    if ((gd = GEgetDevice(i)) && (dd = gd->dev)
+	         && dd->gettingEvent){
 		ret = TRUE;
 		break;
 	    }
@@ -142,15 +141,15 @@ do_getGraphicsEvent(SEXP call, SEXP op, SEXP args, SEXP env)
         i = 1;
 	devNum = curDevice();
 	while (i++ < NumDevices()) {
-	    gd = GEgetDevice(devNum);
-	    dd = gd->dev;
-	    if (dd->gettingEvent)
-	    	error(_("recursive use of 'getGraphicsEvent' not supported"));
-	    if (dd->eventEnv != R_NilValue) {
-	        if (dd->eventHelper) dd->eventHelper(dd, 1);
-	        dd->gettingEvent = TRUE;
-	        defineVar(install("result"), R_NilValue, dd->eventEnv);
-	        count++;
+	    if ((gd = GEgetDevice(devNum)) && (dd = gd->dev)) {
+		if (dd->gettingEvent)
+		    error(_("recursive use of 'getGraphicsEvent' not supported"));
+		if (dd->eventEnv != R_NilValue) {
+		    if (dd->eventHelper) dd->eventHelper(dd, 1);
+		    dd->gettingEvent = TRUE;
+		    defineVar(install("result"), R_NilValue, dd->eventEnv);
+		    count++;
+		}
 	    }
 	    devNum = nextDevice(devNum);
 	}
@@ -173,13 +172,13 @@ do_getGraphicsEvent(SEXP call, SEXP op, SEXP args, SEXP env)
 	    i = 1;
 	    devNum = curDevice();
 	    while (i++ < NumDevices()) {
-		gd = GEgetDevice(devNum);
-		dd = gd->dev;
-		if (dd->eventEnv != R_NilValue) {
-		    if (dd->eventHelper) dd->eventHelper(dd, 2);
-		    result = findVar(install("result"), dd->eventEnv);
-		    if (result != R_NilValue && result != R_UnboundValue) {
-			break;
+		if ((gd = GEgetDevice(devNum)) && (dd = gd->dev)) {
+		    if (dd->eventEnv != R_NilValue) {
+			if (dd->eventHelper) dd->eventHelper(dd, 2);
+			result = findVar(install("result"), dd->eventEnv);
+			if (result != R_NilValue && result != R_UnboundValue) {
+			    break;
+			}
 		    }
 		}
 		devNum = nextDevice(devNum);
@@ -189,11 +188,11 @@ do_getGraphicsEvent(SEXP call, SEXP op, SEXP args, SEXP env)
         i = 1;
 	devNum = curDevice();
 	while (i++ < NumDevices()) {
-	    gd = GEgetDevice(devNum);
-	    dd = gd->dev;
-	    if (dd->eventEnv != R_NilValue) {
-	        if (dd->eventHelper) dd->eventHelper(dd, 0);
-	        dd->gettingEvent = FALSE;
+	    if ((gd = GEgetDevice(devNum)) && (dd = gd->dev)) {
+		if (dd->eventEnv != R_NilValue) {
+		    if (dd->eventHelper) dd->eventHelper(dd, 0);
+		    dd->gettingEvent = FALSE;
+		}
 	    }
 	    devNum = nextDevice(devNum);
 	}
@@ -211,12 +210,15 @@ void doMouseEvent(pDevDesc dd, R_MouseEvent event,
 
     dd->gettingEvent = FALSE; /* avoid recursive calls */
 
-    handler = findVar(install(mouseHandlers[event]), dd->eventEnv);
-    if (TYPEOF(handler) == PROMSXP)
+    PROTECT(handler = findVar(install(mouseHandlers[event]), dd->eventEnv));
+    if (TYPEOF(handler) == PROMSXP) {
 	handler = eval(handler, dd->eventEnv);
-
+	UNPROTECT(1); /* handler */
+	PROTECT(handler);
+    }
     if (TYPEOF(handler) == CLOSXP) {
-        defineVar(install("which"), ScalarInteger(ndevNumber(dd)+1), dd->eventEnv);
+        SEXP s_which = install("which");
+        defineVar(s_which, ScalarInteger(ndevNumber(dd)+1), dd->eventEnv);
 	// Be portable: see PR#15793
 	int len = ((buttons & leftButton) != 0)
 	  + ((buttons & middleButton) != 0)
@@ -236,6 +238,7 @@ void doMouseEvent(pDevDesc dd, R_MouseEvent event,
 	UNPROTECT(5);	
 	R_FlushConsole();
     }
+    UNPROTECT(1); /* handler */
     dd->gettingEvent = TRUE;
     return;
 }
@@ -253,12 +256,16 @@ void doKeybd(pDevDesc dd, R_KeyName rkey,
 
     dd->gettingEvent = FALSE; /* avoid recursive calls */
 
-    handler = findVar(install(keybdHandler), dd->eventEnv);
-    if (TYPEOF(handler) == PROMSXP)
+    PROTECT(handler = findVar(install(keybdHandler), dd->eventEnv));
+    if (TYPEOF(handler) == PROMSXP) {
 	handler = eval(handler, dd->eventEnv);
+	UNPROTECT(1); /* handler */
+	PROTECT(handler);
+    }
 
     if (TYPEOF(handler) == CLOSXP) {
-        defineVar(install("which"), ScalarInteger(ndevNumber(dd)+1), dd->eventEnv);
+        SEXP s_which = install("which");
+        defineVar(s_which, ScalarInteger(ndevNumber(dd)+1), dd->eventEnv);
 	PROTECT(skey = mkString(keyname ? keyname : keynames[rkey]));
 	PROTECT(temp = lang2(handler, skey));
 	PROTECT(result = eval(temp, dd->eventEnv));
@@ -266,6 +273,7 @@ void doKeybd(pDevDesc dd, R_KeyName rkey,
 	UNPROTECT(3);	
 	R_FlushConsole();
     }
+    UNPROTECT(1); /* handler */
     dd->gettingEvent = TRUE;
     return;
 }

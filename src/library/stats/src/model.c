@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1997--2013  The R Core Team
+ *  Copyright (C) 1997--2015  The R Core Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -214,8 +214,11 @@ SEXP modelframe(SEXP call, SEXP op, SEXP args, SEXP rho)
 	if (!isNewList(ans) || length(ans) != length(data))
 	    error(_("invalid result from na.action"));
 	/* need to transfer _all but tsp and dim_ attributes, possibly lost
-	   by subsetting in na.action.  */
+	   by subsetting in na.action. */
+	/* But if data is unchanged, don't mess with it (PR#16436) */
+	
 	for ( i = length(ans) ; i-- ; )
+	    if (VECTOR_ELT(data, i) != VECTOR_ELT(ans, i))
 		copyMostAttribNoTs(VECTOR_ELT(data, i),VECTOR_ELT(ans, i));
 
 	UNPROTECT(3);
@@ -1517,8 +1520,9 @@ static SEXP EncodeVars(SEXP formula)
 		    if(!strcmp(c, translateChar(STRING_ELT(framenames, j))))
 			error(_("duplicated name '%s' in data frame using '.'"),
 			      c);
+		int cIndex = InstallVar(install(c));
 		term = AllocTerm();
-		SetBit(term, InstallVar(install(c)), 1);
+		SetBit(term, cIndex, 1);
 		if(i == 0) PROTECT(v = r = cons(term, R_NilValue));
 		else {SETCDR(v, CONS(term, R_NilValue)); v = CDR(v);}
 	    }
@@ -1527,8 +1531,9 @@ static SEXP EncodeVars(SEXP formula)
 	    return r;
 	}
 	else {
+	    int formulaIndex = InstallVar(formula);
 	    term = AllocTerm();
-	    SetBit(term, InstallVar(formula), 1);
+	    SetBit(term, formulaIndex, 1);
 	    return CONS(term, R_NilValue);
 	}
     }
@@ -1569,8 +1574,9 @@ static SEXP EncodeVars(SEXP formula)
 	if (CAR(formula) == parenSymbol) {
 	    return EncodeVars(CADR(formula));
 	}
+	int formulaIndex = InstallVar(formula);
 	term = AllocTerm();
-	SetBit(term, InstallVar(formula), 1);
+	SetBit(term, formulaIndex, 1);
 	return CONS(term, R_NilValue);
     }
     error(_("invalid model formula in EncodeVars"));
@@ -1975,7 +1981,7 @@ SEXP termsform(SEXP args)
     a = CDR(a);
 
     SETCAR(a, mkString("terms"));
-    SET_TAG(a, install("class"));
+    SET_TAG(a, R_ClassSymbol);
     SET_OBJECT(ans, 1);
 
     SETCDR(a, R_NilValue);  /* truncate if necessary */

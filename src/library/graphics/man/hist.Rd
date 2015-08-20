@@ -1,9 +1,7 @@
 % File src/library/graphics/man/hist.Rd
 % Part of the R package, http://www.R-project.org
-% Copyright 1995-2013 R Core Team
+% Copyright 1995-2015 R Core Team
 % Distributed under GPL 2 or later
-
-\newcommand{\CRANpkg}{\href{http://CRAN.R-project.org/package=#1}{\pkg{#1}}}
 
 \name{hist}
 \title{Histograms}
@@ -36,7 +34,7 @@ hist(x, \dots)
     In the last three cases the number is a suggestion only; the
      breakpoints will be set to \code{\link{pretty}} values.  If
      \code{breaks} is a function, the \code{x} vector is supplied to it
-     as the only argument. 
+     as the only argument.
   }
   \item{freq}{logical; if \code{TRUE}, the histogram graphic is a
     representation of frequencies, the \code{counts} component of
@@ -73,7 +71,7 @@ hist(x, \dots)
     plotted, otherwise a list of breaks and counts is returned.  In the
     latter case, a warning is used if (typically graphical) arguments
     are specified that only apply to the \code{plot = TRUE} case.}
-  \item{labels}{logical or character.  Additionally draw labels on top
+  \item{labels}{logical or character string.  Additionally draw labels on top
     of bars, if not \code{FALSE}; see \code{\link{plot.histogram}}.}
   \item{nclass}{numeric (integer).  For S(-PLUS) compatibility only,
     \code{nclass} is equivalent to \code{breaks} for a scalar or
@@ -112,9 +110,10 @@ hist(x, \dots)
   and \code{include.lowest} means \sQuote{\emph{include highest}}.
 
   A numerical tolerance of \eqn{10^{-7}}{1e-7} times the median bin size
-  is applied when counting entries on the edges of bins.  This is not
-  included in the reported \code{breaks} nor (as from \R 2.11.0) in the
-  calculation of \code{density}.
+  (for more than four bins, otherwise the median is substituted) is
+  applied when counting entries on the edges of bins.  This is not
+  included in the reported \code{breaks} nor in the calculation of
+  \code{density}.
 
   The default for \code{breaks} is \code{"Sturges"}: see
   \code{\link{nclass.Sturges}}.  Other names for which algorithms
@@ -141,9 +140,6 @@ hist(x, \dots)
   \item{xname}{a character string with the actual \code{x} argument name.}
   \item{equidist}{logical, indicating if the distances between
     \code{breaks} are all the same.}
-
-  Prior to \R 3.0.0 there was a component \code{intensities}, the same
-  as \code{density}, for long-term back compatibility.
 }
 
 \references{

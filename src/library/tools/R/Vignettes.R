@@ -44,7 +44,7 @@ find_vignette_product <-
     function(name, by = c("weave", "tangle", "texi2pdf"),
              final = FALSE, main = TRUE, dir = ".", engine, ...)
 {
-    stopifnot(length(name) == 1L, file_test("-d", dir))
+    stopifnot(length(name) == 1L, dir.exists(dir))
     by <- match.arg(by)
     exts <- ## (lower case here):
 	switch(by,
@@ -166,12 +166,15 @@ function(package, dir, lib.loc = NULL,
         file <- basename(file)
         name <- vigns$names[i]
     	engine <- vignetteEngine(vigns$engines[i])
-
+	enc <- vigns$encodings[i]
+        if (enc == "non-ASCII")
+            stop(gettextf("Vignette '%s' is non-ASCII but has no declared encoding", name),
+                 domain = NA)
         if(tangle) {
             message("  Running ", sQuote(file))
             .eval_with_capture({
                 result$tangle[[file]] <- tryCatch({
-                    engine$tangle(file, quiet = TRUE)
+                    engine$tangle(file, quiet = TRUE, encoding = enc)
                     setwd(startdir) # in case a vignette changes the working dir
                     find_vignette_product(name, by = "tangle", main = FALSE, engine = engine)
                 }, error = function(e) e)
@@ -181,7 +184,7 @@ function(package, dir, lib.loc = NULL,
             setwd(startdir) # in case a vignette changes the working dir then errored out
             .eval_with_capture({
                 result$weave[[file]] <- tryCatch({
-                    engine$weave(file, quiet = TRUE)
+                    engine$weave(file, quiet = TRUE, encoding = enc)
                     setwd(startdir)
                     find_vignette_product(name, by = "weave", engine = engine)
                 }, error = function(e) e)
@@ -354,7 +357,7 @@ function(package, dir, subdirs = NULL, lib.loc = NULL, output = FALSE,
     if(missing(dir))
 	stop("you must specify 'package' or 'dir'")
     ## Using sources from directory @code{dir} ...
-    if(!file_test("-d", dir))
+    if(!dir.exists(dir))
 	stop(gettextf("directory '%s' does not exist", dir), domain = NA)
     else {
 	dir <- file_path_as_absolute(dir)
@@ -362,12 +365,12 @@ function(package, dir, subdirs = NULL, lib.loc = NULL, output = FALSE,
 	    subdirs <- if (missing(package)) "vignettes" else "doc"
 	for (subdir in subdirs) {
 	    docdir <- file.path(dir, subdir)
-	    if(file_test("-d", docdir))
+	    if(dir.exists(docdir))
 		break
 	}
     }
 
-    if(!file_test("-d", docdir)) return(NULL)
+    if(!dir.exists(docdir)) return(NULL)
 
     # Locate all vignette files
     buildPkgs <- loadVignetteBuilder(dir, mustwork = FALSE)
@@ -413,8 +416,11 @@ function(package, dir, subdirs = NULL, lib.loc = NULL, output = FALSE,
     stopifnot(length(names)    == length(docs),
 	      length(engines)  == length(docs),
 	      length(patterns) == length(docs), !anyDuplicated(docs))
-
-    z <- list(docs=docs, names=names, engines=engines, patterns=patterns,
+	      
+    defaultEncoding <- .get_package_metadata(dir)["Encoding"]	      
+    encodings <- vapply(docs, getVignetteEncoding, "", default = defaultEncoding)
+    
+    z <- list(docs=docs, names=names, engines=engines, patterns=patterns, encodings = encodings,
 	      dir = docdir, pkgdir = dir, msg = msg)
 
     if (output) {
@@ -501,9 +507,14 @@ buildVignettes <-
         file <- basename(vigns$docs[i])
         name <- vigns$names[i]
     	engine <- vignetteEngine(vigns$engine[i])
-
+        enc <- vigns$encodings[i]
+        if (enc == "non-ASCII") 
+            stop(gettextf("Vignette '%s' is non-ASCII but has no declared encoding", 
+                 file), domain = NA, call. = FALSE)
+        
         output <- tryCatch({
-            engine$weave(file, quiet = quiet)
+            ## FIXME: run this in a separate process
+            engine$weave(file, quiet = quiet, encoding = enc)
             setwd(startdir)
             find_vignette_product(name, by = "weave", engine = engine)
         }, error = function(e) {
@@ -520,7 +531,8 @@ buildVignettes <-
 
         if (tangle) {  # This is set for all engines as of 3.0.2
             output <- tryCatch({
-                engine$tangle(file, quiet = quiet)
+                ## FIXME: run this in a separate process
+                engine$tangle(file, quiet = quiet, encoding = enc)
                 setwd(startdir)
                 find_vignette_product(name, by = "tangle", main = FALSE, engine = engine)
             }, error = function(e) {
@@ -584,11 +596,12 @@ buildVignettes <-
 buildVignette <-
     function(file, dir = ".", weave = TRUE, latex = TRUE, tangle = TRUE,
              quiet = TRUE, clean = TRUE, keep = character(),
-             engine = NULL, buildPkg = NULL, ...)
+             engine = NULL, buildPkg = NULL, 
+	     encoding = getVignetteEncoding(file), ...)
 {
     if (!file_test("-f", file))
 	stop(gettextf("file '%s' not found", file), domain = NA)
-    if (!file_test("-d", dir))
+    if (!dir.exists(dir))
 	stop(gettextf("directory '%s' does not exist", dir), domain = NA)
 
     if (!is.null(buildPkg))
@@ -613,6 +626,9 @@ buildVignette <-
 		file, paste(engine$package, engine$name, sep="::")),
 		domain = NA)
 
+    if (encoding == "non-ASCII") 
+    	stop(gettextf("Vignette '%s' is non-ASCII but has no declared encoding", name))
+
     # Set output directory temporarily
     file <- file_path_as_absolute(file)
     olddir <- setwd(dir)
@@ -629,7 +645,7 @@ buildVignette <-
 
     # Weave
     final <- if (weave) {
-	engine$weave(file, quiet = quiet, ...)
+	engine$weave(file, quiet = quiet, encoding = encoding, ...)
 	setwd(tdir)  # In case weave/vignette changed it
 	output <- find_vignette_product(name, by = "weave", engine = engine)
 
@@ -643,7 +659,7 @@ buildVignette <-
 
     # Tangle
     sources <- if (tangle) {
-	engine$tangle(file, quiet = quiet, ...)
+	engine$tangle(file, quiet = quiet, encoding = encoding, ...)
 	setwd(tdir)  # In case tangle changed it
 	find_vignette_product(name, by = "tangle", main = FALSE, engine = engine)
     } # else NULL
@@ -665,72 +681,78 @@ buildVignette <-
     ##     f <- f[file_test("-f", f)]
     ##     file.remove(f)
     ## #}
+
+    if((is.na(clean) || clean) && file.exists(".build.timestamp")) {
+        file.remove(".build.timestamp")
+    }
+
     unique(keep)
 }
 
-### * .getVignetteEncoding
+### * getVignetteEncoding
 
 getVignetteEncoding <-  function(file, ...)
 {
-    # Look for inputen[cx] first, then %\SweaveUTF8.  Complain about
-    # inconsistencies.
-
     lines <- readLines(file, warn = FALSE)
-    result1 <- .getVignetteEncoding(lines, ...)
-
-    poss <- grep("^[[:space:]]*%+[[:space:]]*\\\\SweaveUTF8[[:space:]]*$", lines, useBytes = TRUE)
-    if (length(poss)) {
-    	result <- "UTF-8"
-    	if (!(result1 %in% c("", "non-ASCII", "UTF-8")))
-    	    stop(gettextf("Inconsistent encoding specifications: %s with %%\\SweaveUTF8", result1), domain = NA)
-    } else
-    	result <- result1
-    result
+    .getVignetteEncoding(lines, ...)
 }
 
-.getVignetteEncoding <- function(lines, convert = FALSE)
+.getVignetteEncoding <- function(lines, default = NA)
 {
-    ## Look for input enc lines using inputenc or inputenx
-    ## Note, multiple encodings are excluded.
+    res <- .get_vignette_metadata(lines, "Encoding")[1L]
 
-    poss <-
-        grep("^[[:space:]]*\\\\usepackage\\[([[:alnum:]]+)\\]\\{inputen[cx]\\}",
-             lines, useBytes = TRUE)
-    ## Check it is in the preamble
-    start <- grep("^[[:space:]]*\\\\begin\\{document\\}",
-                  lines, useBytes = TRUE)
-    if(length(start)) poss <- poss[poss < start[1L]]
-    if(!length(poss)) {
-        asc <- iconv(lines, "latin1", "ASCII")
-        ind <- is.na(asc) | asc != lines
-        if(any(ind)) return("non-ASCII")
-        return("") # or "ASCII"
+    if(is.na(res)) {
+        poss <- grep("^[[:space:]]*%+[[:space:]]*\\\\SweaveUTF8[[:space:]]*$", lines, useBytes = TRUE)
+        if (length(poss)) 
+            res <- "UTF-8"
+        else {
+            ## Look for input enc lines using inputenc or inputenx
+            ## Note, multiple encodings are excluded.
+            poss <-
+                grep("^[[:space:]]*\\\\usepackage\\[([[:alnum:]]+)\\]\\{inputen[cx]\\}",
+                     lines, useBytes = TRUE)
+            ## Check it is in the preamble
+            start <- grep("^[[:space:]]*\\\\begin\\{document\\}",
+                          lines, useBytes = TRUE)
+            if(length(start)) 
+                poss <- poss[poss < start[1L]]
+            if(length(poss)) {
+        	poss <- lines[poss[1L]]
+        	res <- gsub("^[[:space:]]*\\\\usepackage\\[([[:alnum:]]+)\\].*", "\\1",
+                            poss)               # This line should be ASCII.
+	    ## see Rd2latex.R.
+	    ## Currently utf8, utf8x, latin1, latin9 and ansinew are in use.
+	    res <- switch(res,
+		   "utf8" =, "utf8x" = "UTF-8",
+		   "latin1" =, "iso-8859-1" = "latin1",
+		   "latin2" =, "iso-8859-2" = "latin2",
+		   "latin9" =, "iso-8859-15" = "latin-9", # only form known to GNU libiconv
+		   "latin10" =, "iso-8859-16" = "latin10",
+		   "cyrillic" =, "iso-8859-5" =  "ISO-8859-5", # inputenx
+		   "koi8-r" =  "KOI8-R", # inputenx
+		   "arabic" = "ISO-8859-6", # Not clear next 3 are known to latex
+		   "greek" =, "iso-8859-7" = "ISO-8859-7",
+		   "hebrew" =, "iso-8859-8" = "ISO-8859-8",
+		   "ansinew" = "CP1252",
+		   "applemac" = "macroman",
+		   ## assume these only get used on Windows
+		   "cp1250" = "CP1250",
+		   "cp1252" = "CP1252",
+		   "cp1257" = "CP1257",
+		   "unknown")
+	    } else if (!is.na(default)) {
+		res <- default
+            } else { # Nothing else has indicated an encoding, maybe it's just ASCII
+                asc <- iconv(lines, "latin1", "ASCII")
+                ind <- is.na(asc) | asc != lines
+                if(any(ind)) 
+                    res <- "non-ASCII"
+                else
+                    res <- "" # or "ASCII"
+            }
+        }
     }
-    poss <- lines[poss[1L]]
-    res <- gsub("^[[:space:]]*\\\\usepackage\\[([[:alnum:]]+)\\].*", "\\1",
-                poss) # This line should be ASCII.
-    if (convert) {
-        ## see Rd2latex.R.
-        ## Currently utf8, utf8x, latin1, latin9 and ansinew are in use.
-        switch(res,
-               "utf8" =, "utf8x" = "UTF-8",
-               "latin1" =, "iso-8859-1" = "latin1",
-               "latin2" =, "iso-8859-2" = "latin2",
-               "latin9" =, "iso-8859-15" = "latin-9", # only form known to GNU libiconv
-               "latin10" =, "iso-8859-16" = "latin10",
-               "cyrillic" =, "iso-8859-5" =  "ISO-8859-5", # inputenx
-               "koi8-r" =  "KOI8-R", # inputenx
-               "arabic" = "ISO-8859-6", # Not clear next 3 are known to latex
-               "greek" =, "iso-8859-7" = "ISO-8859-7",
-               "hebrew" =, "iso-8859-8" = "ISO-8859-8",
-               "ansinew" = "CP1252",
-               "applemac" = "macroman",
-               ## assume these only get used on Windows
-               "cp1250" = "CP1250",
-               "cp1252" = "CP1252",
-               "cp1257" = "CP1257",
-               "unknown")
-    } else res
+    res
 }
 
 ### * .build_vignette_index
@@ -741,7 +763,7 @@ function(lines, tag)
     meta_RE <- paste("[[:space:]]*%+[[:space:]]*\\\\Vignette", tag,
                      "\\{([^}]*)\\}", sep = "")
     meta <- grep(meta_RE, lines, value = TRUE, useBytes = TRUE)
-    .strip_whitespace(gsub(meta_RE, "\\1", meta))
+    trimws(gsub(meta_RE, "\\1", meta))
 }
 
 vignetteInfo <-
@@ -788,7 +810,7 @@ function(vigns)
     dir <- vigns$dir
     sources <- vigns$sources
 
-    if(!file_test("-d", dir))
+    if(!dir.exists(dir))
         stop(gettextf("directory '%s' does not exist", dir), domain = NA)
 
     nvigns <- length(files)
@@ -855,7 +877,7 @@ function(vigns)
 function(vignetteDir, pkgdir = ".")
 {
     dir <- file.path(pkgdir, vignetteDir)
-    if(!file_test("-d", dir))
+    if(!dir.exists(dir))
         stop(gettextf("directory '%s' does not exist", dir), domain = NA)
 
     subdir <- gsub(pkgdir, "", dir, fixed=TRUE)
@@ -904,18 +926,18 @@ function(pkg, con, vignetteIndex = NULL)
         otherfiles <- setdiff(otherfiles,
                               c(vignetteIndex[, c("PDF", "File", "R")], "index.html"))
     if (length(otherfiles)) {
-    	otherfiles <- ifelse(file.info(system.file(file.path("doc", otherfiles), package=pkg))$isdir,
+    	otherfiles <- ifelse(dir.exists(system.file(file.path("doc", otherfiles), package = pkg)),
 			     paste0(otherfiles, "/"),
 			     otherfiles)
 	urls <- paste0('<a href="', otherfiles, '">', otherfiles, '</a>')
         html <- c(html, '<h2>Other files in the <span class="samp">doc</span> directory</h2>',
                   '<table width="100%">',
-		  '<col width="24%">',
-		  '<col width="50%">',
-		  '<col width="24%">',
+		  '<col style="width: 24%;" />',
+		  '<col style="width: 50%;" />',
+		  '<col style="width: 24%;" />',
                   paste0('<tr><td></td><td><span class="samp">',
                          iconv(urls, "", "UTF-8"), "</span></td></tr>"),
-                  "</dl>")
+                  "</table>")
     }
     html <- c(html, "</body></html>")
     writeLines(html, con=con)
@@ -1006,7 +1028,7 @@ function(vig_name, docDir, encoding = "", pkgdir)
     })
 
     if(length(output) == 1L) {
-        res <- tryCatch({
+        tryCatch({
             source(output, echo = TRUE)
         }, error = function(e) {
             cat("\n  When sourcing ", sQuote(output), ":\n", sep="")
@@ -1190,7 +1212,7 @@ getVignetteInfo <- function(package = NULL, lib.loc = NULL, all = TRUE)
     ## Find the directories with a 'doc' subdirectory *possibly*
     ## containing vignettes.
 
-    paths <- paths[file_test("-d", file.path(paths, "doc"))]
+    paths <- paths[dir.exists(file.path(paths, "doc"))]
 
     empty <- cbind(Package = character(0),
                    Dir = character(0),
