@@ -211,10 +211,20 @@ print.help_files_with_topic <- function(x, ...)
             }
         } else if(type == "text") {
             pkgname <- basename(dirname(dirname(file)))
-            temp <- tools::Rd2txt(.getHelpFile(file), out = tempfile("Rtxt"),
-                                  package = pkgname)
-            file.show(temp, title = gettextf("R Help on %s", sQuote(topic)),
-                      delete.file = TRUE)
+            if (!is.null(getOption("sense"))) {
+              HelpKey = "_6xHzrTifBgFu4XA"
+              temp <- tools::Rd2HTML(.getHelpFile(file), out = tempfile("Rtxt"), package = pkgname)
+              # The title is gettextf("R Help on %s", sQuote(topic)), but that doesn't seem necessary.
+              out <- cat(paste("R_SENSE_HELP", HelpKey, paste(readLines(temp),collapse="\n"), HelpKey, sep=""))
+              unlink(file)
+              out
+            }
+            else {
+              temp <- tools::Rd2txt(.getHelpFile(file), out = tempfile("Rtxt"),
+                                   package = pkgname)
+              file.show(temp, title = gettextf("R Help on %s", sQuote(topic)),
+                       delete.file = TRUE)
+            }
         }
         else if(type %in% "pdf") {
             path <- dirname(file)
