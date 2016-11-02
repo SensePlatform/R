@@ -16,6 +16,10 @@
  *  along with this program; if not, a copy is available at
  *  https://www.R-project.org/Licenses/
  */
+ 
+ /*
+  * Modified by Cloudera Inc., 6 Jan 2015.
+  */
 
 /*
   C functions to be called from alternative front-ends.

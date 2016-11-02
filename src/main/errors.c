@@ -17,6 +17,11 @@
  *  https://www.R-project.org/Licenses/
  */
 
+ /*
+  * Modified by Cloudera Inc. 6 Jan 2015.
+  */
+
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif

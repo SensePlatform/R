@@ -16,6 +16,8 @@
 #  A copy of the GNU General Public License is available at
 #  https://www.R-project.org/Licenses/
 
+# Modified by Cloudera Inc. 6 Jan 2015.
+
 help <-
 function(topic, package = NULL, lib.loc = NULL,
          verbose = getOption("verbose"),

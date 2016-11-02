@@ -23,6 +23,10 @@
 
 /* See system.txt for a description of functions
  */
+ 
+ /*
+  * Modified by Cloudera Inc. 7 Jan 2015.
+  */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>

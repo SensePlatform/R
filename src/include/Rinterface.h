@@ -17,6 +17,10 @@
  *  along with this program; if not, a copy is available at
  *  https://www.R-project.org/Licenses/
  */
+ 
+ /*
+  * Modified by Cloudera Inc., 6 Jan 2015.
+  */
 
 /* This header file is to provide hooks for alternative front-ends,
    e.g. GUIs such as GNOME and Cocoa.  It is only used on Unix-alikes.

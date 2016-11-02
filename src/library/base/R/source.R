@@ -16,6 +16,9 @@
 #  A copy of the GNU General Public License is available at
 #  https://www.R-project.org/Licenses/
 
+# Modified by Cloudera Inc., 6 Jan 2015.
+
+
 SOURCE_START <- "SENSE_SOURCE_START_c1bjh"
 SOURCE_END <- "SENSE_SOURCE_END_c1bjh"
 
