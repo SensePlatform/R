@@ -405,7 +405,7 @@ msgid "list of length %d not meaningful"
 msgstr "Liste der Länge %d nicht sinnvoll"
 
 msgid "only defined on a data frame with all numeric variables"
-msgstr "nur für einen data frame definiert, mit nur nummerischen Variablen"
+msgstr "nur für einen data frame definiert, welcher ausschließlich numerische Variablen enthält"
 
 msgid "character string is not in a standard unambiguous format"
 msgstr "Zeichenkette ist nicht in einem eindeutigen Standardformat"
