@@ -31,7 +31,7 @@ function(file, local = FALSE, echo = verbose, print.eval = echo,
          deparseCtrl = "showAttributes", ## rather?  c("keepInteger", "showAttributes", "keepNA"),
          chdir = FALSE,
          encoding = getOption("encoding"),
-         # continue.echo = getOption("continue"),
+         continue.echo = getOption("continue"),
          skip.echo = 0, keep.source = getOption("keep.source"))
 {
     envir <- if (isTRUE(local)) parent.frame()
