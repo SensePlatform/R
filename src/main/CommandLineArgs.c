@@ -16,6 +16,11 @@
  *  along with this program; if not, a copy is available at
  *  https://www.R-project.org/Licenses/
  */
+ 
+ /*
+  * Modified by Cloudera Inc. 6 Jan 2015.
+  */
+
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -147,6 +152,11 @@ R_common_command_line(int *pac, char **argv, Rstart Rp)
 	    }
 	    else if (!strcmp(*av, "--verbose")) {
 		Rp->R_Verbose = TRUE;
+	    }
+	    else if (!strcmp(*av, "--sense")) {
+	    Rp->R_Sense = TRUE;
+	    Rp->R_Quiet = TRUE;
+	    Rp->R_Interactive = TRUE;
 	    }
 	    else if (!strcmp(*av, "--slave") ||
 		     !strcmp(*av, "-s")) {
